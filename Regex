@@ -1,13 +1,23 @@
-function extractWord(input: string, pattern: string): string | null {
+function extractWord(input: string): string | null {
     // Regular expression pattern to match the desired format
-    const regex = new RegExp(`(?:${pattern})\\s+([\\w\\s]+)`, 'i');
-    const match = input.match(regex);
+    const pattern = /(?:To(Be|Contain)|NotTo(Be|Contain))\s+([\w\s]+)/i;
+    const match = input.match(pattern);
 
     // Check if a match is found and return the extracted word
-    if (match && match[1]) {
-        return match[1].trim();
+    if (match && match[3]) {
+        return match[3].trim();
     }
 
     // Return null if no match is found
     return null;
+}
+
+// Example usage
+const inputString = "Review State NotToBe Determined";
+const word = extractWord(inputString);
+
+if (word !== null) {
+    console.log(word); // Output: 'Determined'
+} else {
+    console.log("No match found.");
 }
