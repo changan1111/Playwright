@@ -1,0 +1,50 @@
+// customReport.ts
+
+import { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter';
+import { mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { Document, Packer, Paragraph, TextRun, Media } from 'docx';
+import path from 'path';
+
+class CustomReporter implements Reporter {
+  private steps: Array<{ title: string, screenshotPath: string }> = [];
+
+  onBegin(config: FullConfig, suite: Suite) {
+    mkdirSync('test-results/screenshots', { recursive: true });
+  }
+
+  async onTestEnd(test: TestCase, result: TestResult) {
+    // Collect all screenshots from testInfo attachments
+    for (const attachment of result.attachments) {
+      if (attachment.contentType === 'image/png') {
+        const screenshotPath = `test-results/screenshots/${this.steps.length + 1}-${attachment.name.replace(/ /g, '_')}.png`;
+        const screenshotBuffer = Buffer.from(attachment.body, 'base64');
+        writeFileSync(screenshotPath, screenshotBuffer);
+        this.steps.push({ title: attachment.name, screenshotPath });
+      }
+    }
+
+    // Generate Word Document
+    const doc = new Document();
+    this.steps.forEach((step) => {
+      const screenshotPath = path.resolve(step.screenshotPath);
+      const image = Media.addImage(doc, readFileSync(screenshotPath));
+
+      doc.addSection({
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({ text: step.title, bold: true }),
+            ],
+          }),
+          new Paragraph(image),
+        ],
+      });
+    });
+
+    Packer.toBuffer(doc).then((buffer) => {
+      writeFileSync('test-results/Report.docx', buffer);
+    });
+  }
+}
+
+export default CustomReporter;
