@@ -21,3 +21,9 @@ if (word !== null) {
 } else {
     console.log("No match found.");
 }
+
+
+    let stepDesc = 'Step Name: locator.waitFor([id="kis.enterprise.customer.customer"] iframe >> internal:control=enter-frame >> //*[@ui-sref=\'involved-parties.id.identification-names.active\']/span)';
+    let finalContent = stepDesc.replace(/\[id="kis\.enterprise\.customer\.customer"\] iframe >> internal:control=enter-frame >> /g, "");
+    console.log(finalContent);
+
