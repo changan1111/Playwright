@@ -23,7 +23,8 @@ if (word !== null) {
 }
 
 
-    let stepDesc = 'Step Name: locator.waitFor([id="kis.enterprise.customer.customer"] iframe >> internal:control=enter-frame >> //*[@ui-sref=\'involved-parties.id.identification-names.active\']/span)';
-    let finalContent = stepDesc.replace(/\[id="kis\.enterprise\.customer\.customer"\] iframe >> internal:control=enter-frame >> /g, "");
-    console.log(finalContent);
-
+  for (let i = 0; i < textSteps.length; ++i) {
+    let stepDesc = textSteps[i];
+    stepDesc = stepDesc.replace(/\[id="kis\.enterprise\.customer\.customer"\] iframe >> internal:control=enter-frame >> /g, "");
+    htmlLines.push(`<div>Step ${i + 1}: ${stepDesc}</div>`);
+}
