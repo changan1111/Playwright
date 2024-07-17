@@ -1,0 +1,19 @@
+import path from 'path';
+import { PlaywrightTestConfig } from '@playwright/test';
+
+const config: PlaywrightTestConfig = {
+  globalSetup: require.resolve('./global-setup'),
+  projects: [
+    {
+      name: 'tests',
+      testDir: path.join(__dirname, 'tests'),
+      use: {
+        // Browser options
+      },
+    },
+  ],
+  reporter: 'list',
+  // Add more configuration options as needed
+};
+
+export default config;
