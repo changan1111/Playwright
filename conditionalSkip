@@ -1,0 +1,58 @@
+import fs from 'fs';
+import path from 'path';
+import { test } from '@playwright/test';
+
+// Load the tests to run from the temporary file
+const tempFilePath = path.resolve(__dirname, 'testsToRun.json');
+const testsToRun: string[] = JSON.parse(fs.readFileSync(tempFilePath, 'utf-8'));
+
+// Function to conditionally skip tests
+function conditionalTest(testName: string, testFn: (params: { page: any, testInfo: any }) => Promise<void>) {
+  if (testsToRun.includes(testName)) {
+    test(testName, testFn);
+  } else {
+    test.skip(testName, testFn);
+  }
+}
+
+// Your existing test cases wrapped with conditionalTest
+conditionalTest('smokeTest', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test1', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+// Repeat for other test cases...
+conditionalTest('test2', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test3', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test4', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test5', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test6', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test7', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test8', async ({ page }, testInfo) => {
+  // Test implementation
+});
+
+conditionalTest('test9', async ({ page }, testInfo) => {
+  // Test implementation
+});
