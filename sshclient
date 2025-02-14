@@ -1,34 +1,82 @@
-import SSH2Promise from 'ssh2-promise';
+import { Client } from 'ssh2';
 import fs from 'fs';
 
 export class SSHClient {
-  async runCommands(host: string, username: string, privateKeyPath: string, commands: string[]) {
-    const ssh = new SSH2Promise({
-      host: host,
-      username: username,
-      identity: fs.readFileSync(privateKeyPath, 'utf-8'), // Load private key
+  private conn: Client;
+
+  constructor() {
+    this.conn = new Client();
+  }
+
+  // Connect using SSH with private key
+  async connectSSH(host: string, username: string, privateKeyPath: string) {
+    const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
+
+    return new Promise<void>((resolve, reject) => {
+      this.conn.on('ready', () => {
+        console.log('SSH Connection ready');
+        resolve();
+      }).on('error', (err) => {
+        console.error('SSH Connection error:', err);
+        reject(err);
+      }).connect({
+        host,
+        username,
+        privateKey,
+      });
     });
+  }
 
-    try {
-      await ssh.connect();
-      console.log('Connected to the server.');
-
-      for (const command of commands) {
-        console.log(`Running: ${command}`);
-        const result = await ssh.exec(command);
-        console.log(`Output:\n${result}`);
-      }
-    } catch (error) {
-      console.error('Error executing commands:', error);
-    } finally {
-      await ssh.close();
-      console.log('Disconnected from the server.');
+  // Run multiple commands
+  async runCommands(commands: string[]) {
+    for (const command of commands) {
+      await this.executeCommand(command);
     }
+  }
+
+  // Execute a single command via SSH
+  private async executeCommand(command: string) {
+    return new Promise<void>((resolve, reject) => {
+      this.conn.exec(command, (err, stream) => {
+        if (err) {
+          console.error('Command execution error:', err);
+          reject(err);
+          return;
+        }
+
+        stream.on('close', () => {
+          resolve();
+        }).on('data', (data) => {
+          console.log(`Output: ${data.toString()}`);
+        }).stderr.on('data', (data) => {
+          console.error(`Error: ${data.toString()}`);
+        });
+      });
+    });
+  }
+
+  // Disconnect SSH connection
+  disconnect() {
+    this.conn.end();
+    console.log('Disconnected from the server.');
   }
 }
 
 // Example usage:
-const sshClient = new SSHClient();
-const commands = ['command1', 'command2', 'command3', 'command4', 'command5', 'command6'];
+(async () => {
+  const sshClient = new SSHClient();
+  const commands = ['ls -l', 'whoami', 'uptime'];
 
-sshClient.runCommands('your.remote.server', 'your-username', '/path/to/id_rsa', commands);
+  try {
+    // Connect to the SSH server
+    await sshClient.connectSSH('your.remote.server', 'your-username', '/path/to/id_rsa');
+
+    // Run the commands sequentially
+    await sshClient.runCommands(commands);
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    // Disconnect from the server
+    sshClient.disconnect();
+  }
+})();
