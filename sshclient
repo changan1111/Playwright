@@ -1,82 +1,34 @@
-import { Client } from 'ssh2';
+import { NodeSSH } from 'node-ssh';
 import fs from 'fs';
 
-export class SSHClient {
-  private conn: Client;
+const ssh = new NodeSSH();
 
-  constructor() {
-    this.conn = new Client();
-  }
-
-  // Connect using SSH with private key
-  async connectSSH(host: string, username: string, privateKeyPath: string) {
-    const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
-
-    return new Promise<void>((resolve, reject) => {
-      this.conn.on('ready', () => {
-        console.log('SSH Connection ready');
-        resolve();
-      }).on('error', (err) => {
-        console.error('SSH Connection error:', err);
-        reject(err);
-      }).connect({
-        host,
-        username,
-        privateKey,
-      });
-    });
-  }
-
-  // Run multiple commands
-  async runCommands(commands: string[]) {
-    for (const command of commands) {
-      await this.executeCommand(command);
-    }
-  }
-
-  // Execute a single command via SSH
-  private async executeCommand(command: string) {
-    return new Promise<void>((resolve, reject) => {
-      this.conn.exec(command, (err, stream) => {
-        if (err) {
-          console.error('Command execution error:', err);
-          reject(err);
-          return;
-        }
-
-        stream.on('close', () => {
-          resolve();
-        }).on('data', (data) => {
-          console.log(`Output: ${data.toString()}`);
-        }).stderr.on('data', (data) => {
-          console.error(`Error: ${data.toString()}`);
-        });
-      });
-    });
-  }
-
-  // Disconnect SSH connection
-  disconnect() {
-    this.conn.end();
-    console.log('Disconnected from the server.');
-  }
-}
-
-// Example usage:
-(async () => {
-  const sshClient = new SSHClient();
-  const commands = ['ls -l', 'whoami', 'uptime'];
-
+async function runCommands() {
   try {
-    // Connect to the SSH server
-    await sshClient.connectSSH('your.remote.server', 'your-username', '/path/to/id_rsa');
+    // Establishing SSH connection using private key authentication
+    await ssh.connect({
+      host: 'your.remote.server',
+      username: 'your-username',
+      privateKey: fs.readFileSync('/path/to/id_rsa', 'utf-8'),  // Read private key from file
+    });
 
-    // Run the commands sequentially
-    await sshClient.runCommands(commands);
+    console.log('Connected to the server');
+
+    // Execute the first command (you can add more commands as needed)
+    const result1 = await ssh.execCommand('uptime');
+    console.log('Uptime:', result1.stdout);
+
+    // Execute another command
+    const result2 = await ssh.execCommand('df -h');
+    console.log('Disk Space:', result2.stdout);
+
   } catch (error) {
     console.error('Error:', error);
   } finally {
-    // Disconnect from the server
-    sshClient.disconnect();
+    // Disconnecting from the server
+    ssh.dispose();
+    console.log('Disconnected from the server');
   }
-})();
+}
+
+runCommands();
