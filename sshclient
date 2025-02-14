@@ -18,6 +18,16 @@ async function runCommands() {
     const result1 = await ssh.execCommand('uptime');
     console.log('Uptime:', result1.stdout);
 
+const commandList = [
+  'sudo su - svc-bmc <<EOF',
+  'cd tbp-qa/scripts',
+  'ls -la',
+  'echo "Execution complete"',
+  'EOF'
+];
+
+const commands = commandList.join('\n');
+
     // Execute another command
     const result2 = await ssh.execCommand('df -h');
     console.log('Disk Space:', result2.stdout);
