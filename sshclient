@@ -26,6 +26,22 @@ const commandList = [
   'EOF'
 ];
 
+(or)
+
+
+
+const dynamicCommands = `
+  cd tbp-qa/scripts
+  ls -la
+  echo "Dynamic Execution Completed"
+`;
+
+const commandBlock = `
+  sudo su - svc-bmc <<EOF
+  ${dynamicCommands}
+  EOF
+`;
+
 const commands = commandList.join('\n');
 
     // Execute another command
