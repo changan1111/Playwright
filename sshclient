@@ -1,0 +1,38 @@
+import SSH2Promise from 'ssh2-promise';
+import fs from 'fs';
+
+export class SSHClient {
+  private ssh: SSH2Promise;
+
+  constructor(private host: string, private username: string, private privateKeyPath: string) {
+    this.ssh = new SSH2Promise({
+      host: this.host,
+      username: this.username,
+      identity: fs.readFileSync(this.privateKeyPath, 'utf-8'),
+    });
+  }
+
+  async runCommands(commands: string[]) {
+    try {
+      await this.ssh.connect();
+      console.log('Connected to the server.');
+
+      for (const command of commands) {
+        console.log(`Running: ${command}`);
+        const result = await this.ssh.exec(command);
+        console.log(`Output:\n${result}`);
+      }
+    } catch (error) {
+      console.error('Error executing commands:', error);
+    } finally {
+      await this.ssh.close();
+      console.log('Disconnected from the server.');
+    }
+  }
+}
+
+// Example usage:
+const sshClient = new SSHClient('your.remote.server', 'your-username', '/path/to/id_rsa');
+const commands = ['command1', 'command2', 'command3', 'command4', 'command5', 'command6'];
+
+sshClient.runCommands(commands);
