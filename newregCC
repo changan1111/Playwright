@@ -8,24 +8,18 @@ class BucketContribution {
   private buckets: { [key: string]: Bucket };
   private dayLimits: { [key: string]: number };
 
-  constructor() {
+  constructor(bucketAmounts: { [key: string]: number } = {}) {
     this.buckets = {
-      Bucket2: { name: 'Bucket2', amount: 0, contributed: 0 },
-      Bucket3: { name: 'Bucket3', amount: 0, contributed: 0 },
-      Bucket6: { name: 'Bucket6', amount: 0, contributed: 0 },
-      Bucket7: { name: 'Bucket7', amount: 0, contributed: 0 },
+      Bucket2: { name: 'Bucket2', amount: bucketAmounts['Bucket2'] || 0, contributed: 0 },
+      Bucket3: { name: 'Bucket3', amount: bucketAmounts['Bucket3'] || 0, contributed: 0 },
+      Bucket6: { name: 'Bucket6', amount: bucketAmounts['Bucket6'] || 0, contributed: 0 },
+      Bucket7: { name: 'Bucket7', amount: bucketAmounts['Bucket7'] || 0, contributed: 0 },
     };
 
     this.dayLimits = {
       Day1: 6000,
       Day2: 6000,
     };
-  }
-
-  public setBucketAmount(bucketName: string, amount: number) {
-    if (this.buckets[bucketName]) {
-      this.buckets[bucketName].amount = amount;
-    }
   }
 
   public calculateContributions() {
@@ -92,7 +86,7 @@ class BucketContribution {
     }
 
     // Bucket7 can contribute more on Day 2 if it has remaining funds
-    let bucket7Remaining = this.buckets['Bucket7'].amount - day1Contributions['Bucket7'];
+    let bucket7Remaining = this.buckets['Bucket7'].amount - day1Contributions['Bucket7']; 
     day2Contributions['Bucket7'] = bucket7Remaining;
     this.buckets['Bucket7'].contributed += bucket7Remaining;
 
@@ -125,10 +119,11 @@ class BucketContribution {
 }
 
 // Example usage
-let contribution = new BucketContribution();
-contribution.setBucketAmount('Bucket2', 4000);
-contribution.setBucketAmount('Bucket6', 2000);
-contribution.setBucketAmount('Bucket7', 1500);
+let contribution = new BucketContribution({
+  Bucket2: 4000,
+  Bucket6: 2000,
+  Bucket7: 1500,
+});
 
 let contributions = contribution.calculateContributions();
 
