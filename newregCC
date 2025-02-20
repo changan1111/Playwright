@@ -1,98 +1,135 @@
-interface BucketData {
-  bucket2: number;
-  bucket7: number;
-  bucket6: number;
-  bucket3: number;
+interface Bucket {
+  name: string;
+  amount: number;
+  contributed: number;
 }
 
-class BucketRelease {
-  private maxReleasePerDay: number = 6000;
-  private releaseSchedule: { [key: string]: number } = {
-    day1: 0,
-    day2: 0,
-    day5: 0,
-    day7: 0,
-  };
-  
-  constructor(private buckets: BucketData) {}
+class BucketContribution {
+  private buckets: { [key: string]: Bucket };
+  private dayLimits: { [key: string]: number };
 
-  // Method to calculate release for each day
-  public releaseBuckets() {
-    // Day 1: Handle Bucket 2 and Bucket 7
-    let day1Release = 0;
-    if (this.buckets.bucket2 > 0) {
-      const releaseFromBucket2 = Math.min(this.buckets.bucket2, this.maxReleasePerDay);
-      this.buckets.bucket2 -= releaseFromBucket2;
-      day1Release += releaseFromBucket2;
-    }
-
-    let remaining = this.maxReleasePerDay - day1Release;
-
-    if (remaining > 0 && this.buckets.bucket7 > 0) {
-      const releaseFromBucket7 = Math.min(this.buckets.bucket7, remaining);
-      this.buckets.bucket7 -= releaseFromBucket7;
-      day1Release += releaseFromBucket7;
-    }
-
-    this.releaseSchedule.day1 = day1Release;
-    const day1Remaining = this.maxReleasePerDay - day1Release;
-
-    // Day 2: Release remaining amounts
-    if (day1Remaining > 0) {
-      if (this.buckets.bucket7 > 0) {
-        const releaseFromBucket7 = Math.min(this.buckets.bucket7, day1Remaining);
-        this.buckets.bucket7 -= releaseFromBucket7;
-        this.releaseSchedule.day2 = releaseFromBucket7;
-      }
-    }
-
-    // Day 5: Handle remaining release from Bucket 6 and Bucket 3
-    let day5Release = 0;
-    if (this.buckets.bucket6 > 0) {
-      const releaseFromBucket6 = Math.min(this.buckets.bucket6, this.buckets.bucket6);
-      this.buckets.bucket6 -= releaseFromBucket6;
-      day5Release += releaseFromBucket6;
-    }
-
-    if (this.buckets.bucket3 > 0) {
-      const releaseFromBucket3 = Math.min(this.buckets.bucket3, this.buckets.bucket3);
-      this.buckets.bucket3 -= releaseFromBucket3;
-      day5Release += releaseFromBucket3;
-    }
-
-    this.releaseSchedule.day5 = day5Release;
-
-    // Day 7: Handle the remaining release from Bucket 2
-    let day7Release = 0;
-    if (this.buckets.bucket2 > 0) {
-      const releaseFromBucket2 = Math.min(this.buckets.bucket2, this.buckets.bucket2);
-      this.buckets.bucket2 -= releaseFromBucket2;
-      day7Release += releaseFromBucket2;
-    }
-
-    this.releaseSchedule.day7 = day7Release;
-
-    // Final bucket status
-    return {
-      releaseSchedule: this.releaseSchedule,
-      remainingBuckets: this.buckets,
+  constructor() {
+    this.buckets = {
+      Bucket2: { name: 'Bucket2', amount: 0, contributed: 0 },
+      Bucket3: { name: 'Bucket3', amount: 0, contributed: 0 },
+      Bucket6: { name: 'Bucket6', amount: 0, contributed: 0 },
+      Bucket7: { name: 'Bucket7', amount: 0, contributed: 0 },
     };
+
+    this.dayLimits = {
+      Day1: 6000,
+      Day2: 6000,
+    };
+  }
+
+  public setBucketAmount(bucketName: string, amount: number) {
+    if (this.buckets[bucketName]) {
+      this.buckets[bucketName].amount = amount;
+    }
+  }
+
+  public calculateContributions() {
+    let day1Contributions = this.calculateDay1Contributions();
+    let day2Contributions = this.calculateDay2Contributions(day1Contributions);
+    let day5Contributions = this.calculateDay5Contributions();
+    let day7Contributions = this.calculateDay7Contributions();
+
+    return {
+      Day1: day1Contributions,
+      Day2: day2Contributions,
+      Day5: day5Contributions,
+      Day7: day7Contributions,
+    };
+  }
+
+  private calculateDay1Contributions() {
+    let day1Contributions: { [key: string]: number } = {};
+
+    // Bucket2 has the highest priority
+    let bucket2Contribution = Math.min(this.buckets['Bucket2'].amount, this.dayLimits['Day1']);
+    day1Contributions['Bucket2'] = bucket2Contribution;
+    this.buckets['Bucket2'].contributed += bucket2Contribution;
+
+    // Bucket7 is the second-highest priority
+    let remainingAmount = this.dayLimits['Day1'] - bucket2Contribution;
+    let bucket7Contribution = Math.min(this.buckets['Bucket7'].amount, remainingAmount);
+    day1Contributions['Bucket7'] = bucket7Contribution;
+    this.buckets['Bucket7'].contributed += bucket7Contribution;
+    remainingAmount -= bucket7Contribution;
+
+    // Bucket6 and Bucket3 together can contribute up to 300
+    let bucket6And3Contribution = Math.min(300, remainingAmount);
+    let bucket6Contribution = Math.min(this.buckets['Bucket6'].amount, bucket6And3Contribution);
+    day1Contributions['Bucket6'] = bucket6Contribution;
+    this.buckets['Bucket6'].contributed += bucket6Contribution;
+    let bucket3Contribution = bucket6And3Contribution - bucket6Contribution;
+    bucket3Contribution = Math.min(bucket3Contribution, this.buckets['Bucket3'].amount);
+    day1Contributions['Bucket3'] = bucket3Contribution;
+    this.buckets['Bucket3'].contributed += bucket3Contribution;
+
+    return day1Contributions;
+  }
+
+  private calculateDay2Contributions(day1Contributions: { [key: string]: number }) {
+    let day2Contributions: { [key: string]: number } = {};
+
+    let totalDay1Contribution = Object.values(day1Contributions).reduce((a, b) => a + b, 0);
+
+    if (totalDay1Contribution >= this.dayLimits['Day1']) {
+      // Bucket6 and Bucket3 will not contribute on Day 2
+      day2Contributions['Bucket6'] = 0;
+      day2Contributions['Bucket3'] = 0;
+    } else {
+      // Bucket6 and Bucket3 will contribute on Day 2 to reach the day limit
+      let remainingAmount = this.dayLimits['Day1'] - totalDay1Contribution;
+      let bucket6Contribution = Math.min(this.buckets['Bucket6'].amount - day1Contributions['Bucket6'], remainingAmount);
+      day2Contributions['Bucket6'] = bucket6Contribution;
+      this.buckets['Bucket6'].contributed += bucket6Contribution;
+      remainingAmount -= bucket6Contribution;
+      let bucket3Contribution = Math.min(this.buckets['Bucket3'].amount - day1Contributions['Bucket3'], remainingAmount);
+      day2Contributions['Bucket3'] = bucket3Contribution;
+      this.buckets['Bucket3'].contributed += bucket3Contribution;
+    }
+
+    // Bucket7 can contribute more on Day 2 if it has remaining funds
+    let bucket7Remaining = this.buckets['Bucket7'].amount - day1Contributions['Bucket7'];
+    day2Contributions['Bucket7'] = bucket7Remaining;
+    this.buckets['Bucket7'].contributed += bucket7Remaining;
+
+    return day2Contributions;
+  }
+
+  private calculateDay5Contributions() {
+    let day5Contributions: { [key: string]: number } = {};
+
+    // Move remaining unallocated amounts from Bucket6 to Day5
+    let bucket6Remaining = this.buckets['Bucket6'].amount - this.buckets['Bucket6'].contributed;
+    day5Contributions['Bucket6'] = bucket6Remaining;
+
+    // Move remaining unallocated amounts from Bucket3 to Day5
+    let bucket3Remaining = this.buckets['Bucket3'].amount - this.buckets['Bucket3'].contributed;
+    day5Contributions['Bucket3'] = bucket3Remaining;
+
+    return day5Contributions;
+  }
+
+  private calculateDay7Contributions() {
+    let day7Contributions: { [key: string]: number } = {};
+
+    // Move remaining unallocated amounts from Bucket2 to Day7
+    let bucket2Remaining = this.buckets['Bucket2'].amount - this.buckets['Bucket2'].contributed;
+    day7Contributions['Bucket2'] = bucket2Remaining;
+
+    return day7Contributions;
   }
 }
 
-// Example Usage
-const buckets: BucketData = {
-  bucket2: 6001,
-  bucket7: 6001,
-  bucket6: 6001,
-  bucket3: 1000,
-};
+// Example usage
+let contribution = new BucketContribution();
+contribution.setBucketAmount('Bucket2', 4000);
+contribution.setBucketAmount('Bucket6', 2000);
+contribution.setBucketAmount('Bucket7', 1500);
 
-const bucketRelease = new BucketRelease(buckets);
-const result = bucketRelease.releaseBuckets();
+let contributions = contribution.calculateContributions();
 
-console.log("Day 1 Release: ", result.releaseSchedule.day1);
-console.log("Day 2 Release: ", result.releaseSchedule.day2);
-console.log("Day 5 Release: ", result.releaseSchedule.day5);
-console.log("Day 7 Release: ", result.releaseSchedule.day7);
-console.log("Remaining Buckets: ", result.remainingBuckets);
+console.log(contributions);
