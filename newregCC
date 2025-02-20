@@ -1,0 +1,106 @@
+// Types
+interface BucketData {
+  bucket2: number;
+  bucket7: number;
+  bucket6: number;
+  bucket3: number;
+}
+
+interface DayRelease {
+  [day: string]: number;
+}
+
+// Exported Class
+export class BucketReleaseCalculator {
+  // Async Method
+  public async calculateReleases(buckets: BucketData): Promise<DayRelease> {
+    const releases: DayRelease = { 'Day 1': 0, 'Day 2': 0, 'Day 5': 0, 'Day 7': 0 };
+
+    // Get Daily Release Limit from Environment or default to 6000
+    const DAILY_RELEASE_LIMIT = parseInt(process.env.DAILY_RELEASE_LIMIT || '6000', 10);
+
+    // Track remaining amounts
+    let remaining = { ...buckets };
+
+    // Track Bucket 6 & 3 combined release for Day 1 + Day 2
+    let bucket6_3_cumulative = 0;
+
+    // Helper to release amount
+    const release = (day: string, bucket: keyof BucketData, amount: number) => {
+      const releasable = Math.min(amount, remaining[bucket]);
+      releases[day] += releasable;
+      remaining[bucket] -= releasable;
+      return releasable;
+    };
+
+    // Day 1 Logic
+    let day1_total = 0;
+
+    // Priority: Bucket 2
+    day1_total += release('Day 1', 'bucket2', Math.min(DAILY_RELEASE_LIMIT, remaining.bucket2));
+
+    // Bucket 7 to fill up Day 1 to DAILY_RELEASE_LIMIT
+    if (day1_total < DAILY_RELEASE_LIMIT) {
+      day1_total += release('Day 1', 'bucket7', DAILY_RELEASE_LIMIT - day1_total);
+    }
+
+    // Ensure Bucket 7 is fully utilized before moving to Bucket 6 & 3
+    if (day1_total < DAILY_RELEASE_LIMIT) {
+      let bucket6_3_day1 = 300;
+      const bucket6_part = release('Day 1', 'bucket6', Math.min(bucket6_3_day1, remaining.bucket6));
+      bucket6_3_day1 -= bucket6_part;
+      const bucket3_part = release('Day 1', 'bucket3', bucket6_3_day1);
+      bucket6_3_cumulative += bucket6_part + bucket3_part;
+      day1_total += bucket6_part + bucket3_part;
+    }
+
+    // Day 2 Logic
+    let day2_total = 0;
+
+    // Bucket 7 remaining spillover
+    day2_total += release('Day 2', 'bucket7', DAILY_RELEASE_LIMIT - day2_total);
+
+    // Bucket 6 & 3 combined (up to DAILY_RELEASE_LIMIT across Day 1 + Day 2)
+    if (bucket6_3_cumulative < DAILY_RELEASE_LIMIT && day2_total < DAILY_RELEASE_LIMIT) {
+      let remaining_quota = DAILY_RELEASE_LIMIT - bucket6_3_cumulative;
+
+      if (remaining_quota > 0) {
+        const bucket6_part = release('Day 2', 'bucket6', Math.min(remaining_quota, remaining.bucket6));
+        remaining_quota -= bucket6_part;
+        const bucket3_part = release('Day 2', 'bucket3', remaining_quota);
+        bucket6_3_cumulative += bucket6_part + bucket3_part;
+        day2_total += bucket6_part + bucket3_part;
+      }
+    }
+
+    // Ensure Day 1 + Day 2 combined limit of DAILY_RELEASE_LIMIT for Bucket 6 & 3 is not exceeded
+    if (bucket6_3_cumulative > DAILY_RELEASE_LIMIT) {
+      const excess = bucket6_3_cumulative - DAILY_RELEASE_LIMIT;
+      releases['Day 2'] -= excess;
+      releases['Day 5'] += excess;
+    }
+
+    // Day 5 Logic - Release remaining from Bucket 6 & 3
+    releases['Day 5'] += remaining.bucket6 + remaining.bucket3;
+    remaining.bucket6 = 0;
+    remaining.bucket3 = 0;
+
+    // Day 7 Logic - Release spillover from Bucket 2
+    if (buckets.bucket2 > DAILY_RELEASE_LIMIT) {
+      releases['Day 7'] += buckets.bucket2 - DAILY_RELEASE_LIMIT;
+    }
+
+    return releases;
+  }
+}
+
+// Example Usage
+const buckets: BucketData = {
+  bucket2: 4000,
+  bucket7: 501,
+  bucket6: 2000,
+  bucket3: 1000,
+};
+
+const calculator = new BucketReleaseCalculator();
+calculator.calculateReleases(buckets).then(result => console.log(result));
