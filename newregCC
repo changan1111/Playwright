@@ -5,111 +5,94 @@ interface BucketData {
   bucket3: number;
 }
 
-const MAX_RELEASE = process.env.MAX_RELEASE || 6000; // Total max release limit (can be set via environment variable)
-
-const releaseBuckets = (buckets: BucketData) => {
-  let totalReleasedDay1 = 0;
-  let totalReleasedDay2 = 0;
-  let totalReleasedDay5 = 0;
-
-  // Track the remaining amounts for Bucket 2, 7, 6, and 3
-  let remainingBucket2 = buckets.bucket2;
-  let remainingBucket7 = buckets.bucket7;
-  let remainingBucket6 = buckets.bucket6;
-  let remainingBucket3 = buckets.bucket3;
-
-  // Initialize the output for each bucket
-  const output = {
-    bucket2: 0,
-    bucket7: 0,
-    bucket6: 0,
-    bucket3: 0,
+class BucketRelease {
+  private maxReleasePerDay: number = 6000;
+  private releaseSchedule: { [key: string]: number } = {
+    day1: 0,
+    day2: 0,
+    day5: 0,
+    day7: 0,
   };
+  
+  constructor(private buckets: BucketData) {}
 
-  // DAY 1 (maximum release = 6000)
-  // Release from Bucket 2, Bucket 7, and Bucket 6 in priority
-  let day1Release = 0;
-
-  // Priority: Bucket 2 -> Bucket 7 -> Bucket 6 -> Bucket 3
-
-  // Release from Bucket 2
-  if (remainingBucket2 > 0 && day1Release < MAX_RELEASE) {
-    const releaseBucket2 = Math.min(remainingBucket2, MAX_RELEASE - day1Release);
-    output.bucket2 = releaseBucket2;
-    day1Release += releaseBucket2;
-    remainingBucket2 -= releaseBucket2;
-  }
-
-  // Release from Bucket 7
-  if (remainingBucket7 > 0 && day1Release < MAX_RELEASE) {
-    const releaseBucket7 = Math.min(remainingBucket7, MAX_RELEASE - day1Release);
-    output.bucket7 = releaseBucket7;
-    day1Release += releaseBucket7;
-    remainingBucket7 -= releaseBucket7;
-  }
-
-  // Release from Bucket 6 (only if needed to reach 6000)
-  if (remainingBucket6 > 0 && day1Release < MAX_RELEASE) {
-    const releaseBucket6 = Math.min(remainingBucket6, MAX_RELEASE - day1Release);
-    output.bucket6 = releaseBucket6;
-    day1Release += releaseBucket6;
-    remainingBucket6 -= releaseBucket6;
-  }
-
-  // DAY 2
-  // Release only from Bucket 6 and Bucket 3 if needed
-  let day2Release = 0;
-
-  if (day1Release < MAX_RELEASE) {
-    // Release from Bucket 6 (if it wasn't fully released on Day 1)
-    if (remainingBucket6 > 0 && day1Release < MAX_RELEASE) {
-      const releaseBucket6Day2 = Math.min(remainingBucket6, MAX_RELEASE - day1Release);
-      output.bucket6 += releaseBucket6Day2;
-      day2Release += releaseBucket6Day2;
-      remainingBucket6 -= releaseBucket6Day2;
+  // Method to calculate release for each day
+  public releaseBuckets() {
+    // Day 1: Handle Bucket 2 and Bucket 7
+    let day1Release = 0;
+    if (this.buckets.bucket2 > 0) {
+      const releaseFromBucket2 = Math.min(this.buckets.bucket2, this.maxReleasePerDay);
+      this.buckets.bucket2 -= releaseFromBucket2;
+      day1Release += releaseFromBucket2;
     }
+
+    let remaining = this.maxReleasePerDay - day1Release;
+
+    if (remaining > 0 && this.buckets.bucket7 > 0) {
+      const releaseFromBucket7 = Math.min(this.buckets.bucket7, remaining);
+      this.buckets.bucket7 -= releaseFromBucket7;
+      day1Release += releaseFromBucket7;
+    }
+
+    this.releaseSchedule.day1 = day1Release;
+    const day1Remaining = this.maxReleasePerDay - day1Release;
+
+    // Day 2: Release remaining amounts
+    if (day1Remaining > 0) {
+      if (this.buckets.bucket7 > 0) {
+        const releaseFromBucket7 = Math.min(this.buckets.bucket7, day1Remaining);
+        this.buckets.bucket7 -= releaseFromBucket7;
+        this.releaseSchedule.day2 = releaseFromBucket7;
+      }
+    }
+
+    // Day 5: Handle remaining release from Bucket 6 and Bucket 3
+    let day5Release = 0;
+    if (this.buckets.bucket6 > 0) {
+      const releaseFromBucket6 = Math.min(this.buckets.bucket6, this.buckets.bucket6);
+      this.buckets.bucket6 -= releaseFromBucket6;
+      day5Release += releaseFromBucket6;
+    }
+
+    if (this.buckets.bucket3 > 0) {
+      const releaseFromBucket3 = Math.min(this.buckets.bucket3, this.buckets.bucket3);
+      this.buckets.bucket3 -= releaseFromBucket3;
+      day5Release += releaseFromBucket3;
+    }
+
+    this.releaseSchedule.day5 = day5Release;
+
+    // Day 7: Handle the remaining release from Bucket 2
+    let day7Release = 0;
+    if (this.buckets.bucket2 > 0) {
+      const releaseFromBucket2 = Math.min(this.buckets.bucket2, this.buckets.bucket2);
+      this.buckets.bucket2 -= releaseFromBucket2;
+      day7Release += releaseFromBucket2;
+    }
+
+    this.releaseSchedule.day7 = day7Release;
+
+    // Final bucket status
+    return {
+      releaseSchedule: this.releaseSchedule,
+      remainingBuckets: this.buckets,
+    };
   }
-
-  // Release from Bucket 3 (if it wasn't fully released on Day 1)
-  if (remainingBucket3 > 0 && day2Release < MAX_RELEASE) {
-    const releaseBucket3 = Math.min(remainingBucket3, MAX_RELEASE - day2Release);
-    output.bucket3 = releaseBucket3;
-    day2Release += releaseBucket3;
-    remainingBucket3 -= releaseBucket3;
-  }
-
-  // DAY 5 (remaining release)
-  // Any remaining amounts go to Day 5
-  let day5Release = 0;
-
-  // Release from remaining Bucket 6 and Bucket 3
-  if (remainingBucket6 > 0) {
-    output.bucket6 += remainingBucket6;
-    day5Release += remainingBucket6;
-    remainingBucket6 = 0;
-  }
-
-  if (remainingBucket3 > 0) {
-    output.bucket3 += remainingBucket3;
-    day5Release += remainingBucket3;
-    remainingBucket3 = 0;
-  }
-
-  return {
-    day1: output.bucket2 + output.bucket7 + output.bucket6,  // Total released on Day 1
-    day2: output.bucket6 + output.bucket3,                  // Total released on Day 2
-    day5: day5Release,                                      // Total released on Day 5
-    output,                                                 // Final amount released from each bucket
-  };
-};
+}
 
 // Example Usage
 const buckets: BucketData = {
-  bucket2: 5000,
-  bucket7: 600,
-  bucket6: 500,
-  bucket3: 500,
+  bucket2: 6001,
+  bucket7: 6001,
+  bucket6: 6001,
+  bucket3: 1000,
 };
 
-const result = releaseBuckets(buckets);
-console.log(result);
+const bucketRelease = new BucketRelease(buckets);
+const result = bucketRelease.releaseBuckets();
+
+console.log("Day 1 Release: ", result.releaseSchedule.day1);
+console.log("Day 2 Release: ", result.releaseSchedule.day2);
+console.log("Day 5 Release: ", result.releaseSchedule.day5);
+console.log("Day 7 Release: ", result.releaseSchedule.day7);
+console.log("Remaining Buckets: ", result.remainingBuckets);
