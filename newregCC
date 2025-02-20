@@ -1,121 +1,100 @@
-// Types
-interface BucketData {
+import * as dotenv from 'dotenv';
+
+dotenv.config(); // Loads environment variables from a .env file
+
+type BucketData = {
   bucket2: number;
   bucket7: number;
   bucket6: number;
   bucket3: number;
-}
+};
 
-interface DayRelease {
-  [day: string]: {
-    bucket2: number;
-    bucket7: number;
-    bucket6: number;
-    bucket3: number;
-  };
-}
+class BucketReleaseAutomation {
+  buckets: BucketData;
+  totalReleased: number;
+  dailyCap: number;
+  dayRelease: number;
 
-// Exported Class
-export class BucketReleaseCalculator {
-  // Async Method
-  public async calculateReleases(buckets: BucketData): Promise<DayRelease> {
-    const releases: DayRelease = {
-      'Day 1': { bucket2: 0, bucket7: 0, bucket6: 0, bucket3: 0 },
-      'Day 2': { bucket2: 0, bucket7: 0, bucket6: 0, bucket3: 0 },
-      'Day 5': { bucket2: 0, bucket7: 0, bucket6: 0, bucket3: 0 },
-      'Day 7': { bucket2: 0, bucket7: 0, bucket6: 0, bucket3: 0 },
-    };
+  constructor(buckets: BucketData, dailyCap: number) {
+    this.buckets = buckets;
+    this.totalReleased = 0;
+    this.dailyCap = dailyCap;
+    this.dayRelease = 0;
+  }
 
-    // Get Daily Release Limit from Environment or default to 6000
-    const DAILY_RELEASE_LIMIT = parseInt(process.env.DAILY_RELEASE_LIMIT || '6000', 10);
+  releaseOnDay(day: number): void {
+    let dailyRelease = 0;
+    let priorityBuckets = [
+      { name: 'bucket2', amount: this.buckets.bucket2, released: 0 },
+      { name: 'bucket7', amount: this.buckets.bucket7, released: 0 },
+      { name: 'bucket6', amount: this.buckets.bucket6, released: 0 },
+      { name: 'bucket3', amount: this.buckets.bucket3, released: 0 }
+    ];
 
-    // Track remaining amounts
-    let remaining = { ...buckets };
+    // Step 1: Prioritize Bucket 2, Bucket 7
+    priorityBuckets.sort((a, b) => {
+      const priorityOrder = ['bucket2', 'bucket7', 'bucket6', 'bucket3'];
+      return priorityOrder.indexOf(a.name) - priorityOrder.indexOf(b.name);
+    });
 
-    // Track Bucket 6 & 3 combined release for Day 1 + Day 2
-    let bucket6_3_cumulative = 0;
+    // Step 2: Handle release for Day 1 and Day 2 with cap checking
+    if (day === 1 || day === 2) {
+      priorityBuckets.forEach((bucket) => {
+        // Handle Bucket 2 and Bucket 7
+        if (dailyRelease < this.dailyCap) {
+          const maxRelease = this.dailyCap - dailyRelease;
+          const releaseAmount = Math.min(maxRelease, bucket.amount - bucket.released);
+          bucket.released += releaseAmount;
+          dailyRelease += releaseAmount;
+          this.totalReleased += releaseAmount;
+        }
+      });
 
-    // Helper to release amount
-    const release = (day: string, bucket: keyof BucketData, amount: number) => {
-      const releasable = Math.min(amount, remaining[bucket]);
-      releases[day][bucket] += releasable;
-      remaining[bucket] -= releasable;
-      return releasable;
-    };
-
-    // Day 1 Logic
-    let day1_total = 0;
-
-    // Priority: Bucket 2
-    day1_total += release('Day 1', 'bucket2', Math.min(DAILY_RELEASE_LIMIT, remaining.bucket2));
-
-    // Bucket 7 to fill up Day 1 to DAILY_RELEASE_LIMIT
-    if (day1_total < DAILY_RELEASE_LIMIT) {
-      day1_total += release('Day 1', 'bucket7', DAILY_RELEASE_LIMIT - day1_total);
-    }
-
-    // Bucket 6 & 3 combined limit of 300 on Day 1
-    if (day1_total < DAILY_RELEASE_LIMIT) {
-      const bucket6_3_day1_limit = 300;
-      let bucket6_3_day1_remaining = bucket6_3_day1_limit;
-      const bucket6_part = release('Day 1', 'bucket6', Math.min(bucket6_3_day1_remaining, remaining.bucket6));
-      bucket6_3_day1_remaining -= bucket6_part;
-      const bucket3_part = release('Day 1', 'bucket3', bucket6_3_day1_remaining);
-      bucket6_3_cumulative += bucket6_part + bucket3_part;
-      day1_total += bucket6_part + bucket3_part;
-    }
-
-    // Day 2 Logic
-    let day2_total = 0;
-
-    // Bucket 7 remaining spillover
-    day2_total += release('Day 2', 'bucket7', DAILY_RELEASE_LIMIT - day2_total);
-
-    // Bucket 6 & 3 combined (up to DAILY_RELEASE_LIMIT across Day 1 + Day 2)
-    if (bucket6_3_cumulative < DAILY_RELEASE_LIMIT && day2_total < DAILY_RELEASE_LIMIT) {
-      let remaining_quota = DAILY_RELEASE_LIMIT - bucket6_3_cumulative;
-
-      if (remaining_quota > 0) {
-        const bucket6_part = release('Day 2', 'bucket6', Math.min(remaining_quota, remaining.bucket6));
-        remaining_quota -= bucket6_part;
-        const bucket3_part = release('Day 2', 'bucket3', remaining_quota);
-        bucket6_3_cumulative += bucket6_part + bucket3_part;
-        day2_total += bucket6_part + bucket3_part;
+      // Step 3: Handle Bucket 6 and Bucket 3 (only up to 300 in total)
+      if (dailyRelease < this.dailyCap) {
+        let remainingCap = this.dailyCap - dailyRelease;
+        priorityBuckets.forEach((bucket) => {
+          if (['bucket6', 'bucket3'].includes(bucket.name) && remainingCap > 0) {
+            const releaseAmount = Math.min(remainingCap, 300 - bucket.released);
+            bucket.released += releaseAmount;
+            dailyRelease += releaseAmount;
+            remainingCap -= releaseAmount;
+          }
+        });
       }
     }
 
-    // Ensure no Day 2 releases from Bucket 6 & 3 if Day 1 + Day 2 limit already met
-    if (bucket6_3_cumulative >= DAILY_RELEASE_LIMIT) {
-      remaining.bucket6 += releases['Day 2']['bucket6'];
-      remaining.bucket3 += releases['Day 2']['bucket3'];
-      releases['Day 5']['bucket6'] += releases['Day 2']['bucket6'];
-      releases['Day 5']['bucket3'] += releases['Day 2']['bucket3'];
-      releases['Day 2']['bucket6'] = 0;
-      releases['Day 2']['bucket3'] = 0;
+    // Step 4: Handle the excess for Day 5 or later
+    if (day === 5) {
+      priorityBuckets.forEach((bucket) => {
+        // Release remaining amounts from Bucket 6 and Bucket 3
+        if (bucket.released < bucket.amount) {
+          const releaseAmount = bucket.amount - bucket.released;
+          bucket.released += releaseAmount;
+          this.totalReleased += releaseAmount;
+        }
+      });
     }
 
-    // Day 5 Logic - Release remaining from Bucket 6 & 3
-    releases['Day 5']['bucket6'] += remaining.bucket6;
-    releases['Day 5']['bucket3'] += remaining.bucket3;
-    remaining.bucket6 = 0;
-    remaining.bucket3 = 0;
-
-    // Day 7 Logic - Release spillover from Bucket 2
-    if (buckets.bucket2 > DAILY_RELEASE_LIMIT) {
-      releases['Day 7']['bucket2'] += buckets.bucket2 - DAILY_RELEASE_LIMIT;
-    }
-
-    return releases;
+    console.log(`Total Released on Day ${day}:`, dailyRelease);
+    console.log(`Total Released So Far:`, this.totalReleased);
   }
 }
 
-// Example Usage
+// Get the daily cap value from the environment variable (fallback to 6000 if not set)
+const dailyCap = process.env.DAILY_CAP ? parseInt(process.env.DAILY_CAP, 10) : 6000;
+
+// Example bucket data passed as an object
 const buckets: BucketData = {
   bucket2: 4000,
   bucket7: 501,
   bucket6: 2000,
-  bucket3: 1000,
+  bucket3: 1000
 };
 
-const calculator = new BucketReleaseCalculator();
-calculator.calculateReleases(buckets).then(result => console.log(result));
+const bucketRelease = new BucketReleaseAutomation(buckets, dailyCap);
+
+// Simulate the release for different days
+bucketRelease.releaseOnDay(1); // Day 1
+bucketRelease.releaseOnDay(2); // Day 2
+bucketRelease.releaseOnDay(5); // Day 5 (to handle remaining Bucket 6)
