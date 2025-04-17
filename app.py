@@ -191,115 +191,193 @@
 
 
 
-import os
+from flask import Flask, render_template, request, jsonify
 import subprocess
 import threading
-from flask import Flask, render_template, jsonify
+import time
+import os
+import shutil
+import re
+import json
 
 app = Flask(__name__)
 
-# Global variables to track state
-test_process = None
-test_running = False
-test_output = []
-progress_data = {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
-    "skipped": 0
-}
-test_finished = False
-lock = threading.Lock()
+class SmokeTest:
+    def __init__(self):
+        self.playwright_dir = "C:/MBP_Playwright"  # Update this to the correct path
+        self.npx_path = None
+        self.smoke_test_process = None
+        self.smoke_test_output = ""
+        self.is_running = False
+        self.test_progress = {"passed": 0, "failed": 0, "pending": 0, "running": 0, "total": 0, "yet_to_run": 0}
 
-def run_test():
-    global test_process, test_running, test_output, progress_data, test_finished
+    def find_npx_path(self):
+        """Find the path to the npx command"""
+        npx = shutil.which('npx')
+        if not npx:
+            print("npx not found in the system path.")
+        return npx
 
-    with lock:
-        test_running = True
-        test_finished = False
-        test_output = []
-        progress_data = {
-            "total": 0,
-            "passed": 0,
-            "failed": 0,
-            "skipped": 0
-        }
+    def parse_playwright_output(self, output: str) -> dict:
+        """Parse the Playwright output to extract test progress"""
+        progress = {"passed": 0, "failed": 0, "pending": 0, "running": 0, "total": 0, "yet_to_run": 0}
+        lines = output.splitlines()
 
-    # Change to the target directory where your Playwright project is
-    os.chdir("C:/MBP_Playwright")
+        # Process RESULT# for live updates
+        for line in lines:
+            match_result = re.search(r"RESULT#\s+Passed:\s+(\d+),\s*Failed:\s+(\d+),\s*Skipped:\s+(\d+)", line, re.IGNORECASE)
+            if match_result:
+                passed = int(match_result.group(1))
+                failed = int(match_result.group(2))
+                skipped = int(match_result.group(3))
+                progress["passed"] += passed
+                progress["failed"] += failed
+                progress["pending"] += skipped
+                print(f"LIVE RESULT# - Passed: {passed}, Failed: {failed}, Skipped: {skipped} - Current Progress: {progress}")
+                return progress  # Return immediately after a live update
 
-    # Example: Use 'pytest' or 'npx playwright test' or any custom command
-    # Replace this with your actual test command
-    test_process = subprocess.Popen(
-        ["npx", "playwright", "test"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
+        # Process total and running counts (these might appear before or during)
+        for line in lines:
+            match_total = re.search(r"Total:\s+(\d+)", line, re.IGNORECASE)
+            if match_total and progress["total"] == 0:  # Update total only once or if it changes
+                progress["total"] = int(match_total.group(1))
+                print(f"PARSED Total: {progress['total']}")
 
-    for line in test_process.stdout:
-        with lock:
-            test_output.append(line)
-            update_progress_from_line(line)
+            match_in_progress = re.search(r"In Progress:\s+(\d+)", line, re.IGNORECASE)
+            if match_in_progress:
+                progress["running"] = int(match_in_progress.group(1))
+                print(f"PARSED In Progress: {progress['running']}")
 
-            # Check if we encountered "All tests finished." to stop the test
-            if "all tests finished." in line.lower():
-                test_finished = True
-                break
+            match_yet_to_run = re.search(r"Yet to Run:\s+(\d+)", line, re.IGNORECASE)
+            if match_yet_to_run and progress["total"] > 0:
+                progress["yet_to_run"] = int(match_yet_to_run.group(1))
+                print(f"PARSED Yet to Run: {progress['yet_to_run']}")
 
-    test_process.wait()
-    with lock:
-        test_running = False
+            match_pending = re.search(r"Pending:\s+(\d+)", line, re.IGNORECASE)
+            if match_pending:
+                progress["pending"] = int(match_pending.group(1))
+                print(f"PARSED Pending: {progress['pending']}")
 
-def update_progress_from_line(line):
-    line = line.strip().lower()
-    # Adjust parsing for your actual output format
-    if "passed" in line:
-        progress_data["passed"] += 1
-    elif "failed" in line:
-        progress_data["failed"] += 1
-    elif "skipped" in line:
-        progress_data["skipped"] += 1
+        # Process final counts (these appear at the end)
+        final_passed = 0
+        final_failed = 0
+        final_skipped = 0
+        final_total = progress["total"] # Use existing total if found
 
-    # Optional: Infer total
-    progress_data["total"] = (
-        progress_data["passed"] +
-        progress_data["failed"] +
-        progress_data["skipped"]
-    )
+        for line in lines:
+            match_passed_count = re.search(r"Passed Count:\s+(\d+)", line, re.IGNORECASE)
+            if match_passed_count:
+                final_passed = int(match_passed_count.group(1))
+
+            match_failed_count = re.search(r"Failed Count:\s+(\d+)", line, re.IGNORECASE)
+            if match_failed_count:
+                final_failed = int(match_failed_count.group(1))
+
+            match_skipped_count = re.search(r"Skipped Count:\s+(\d+)", line, re.IGNORECASE)
+            if match_skipped_count:
+                final_skipped = int(match_skipped_count.group(1))
+
+            match_final_summary = re.search(r"All\s+(\d+)\s+Passed\s+(\d+)\s+Failed\s+(\d+)\s+Flaky\s+(\d+)\s+Skipped\s+(\d+)", line, re.IGNORECASE)
+            if match_final_summary:
+                final_total = int(match_final_summary.group(1))
+                final_passed = int(match_final_summary.group(2))
+                final_failed = int(match_final_summary.group(3))
+                final_skipped = int(match_final_summary.group(5))
+
+        if final_passed > 0 or final_failed > 0 or final_skipped > 0:
+            progress["passed"] = final_passed
+            progress["failed"] = final_failed
+            progress["pending"] = final_skipped
+            if final_total > 0:
+                progress["total"] = final_total
+            progress["running"] = 0
+            progress["yet_to_run"] = max(0, progress["total"] - progress["passed"] - progress["failed"] - progress["pending"])
+            print(f"FINAL COUNTS - Passed: {progress['passed']}, Failed: {progress['failed']}, Skipped: {progress['pending']}, Total: {progress['total']}")
+            return progress
+
+        if progress["total"] > 0:
+            progress["yet_to_run"] = max(0, progress["total"] - progress["passed"] - progress["failed"] - progress["pending"] - progress["running"])
+
+        return progress
+
+    def run_smoke_test_command(self):
+        """Run the smoke test command"""
+        self.smoke_test_output = ""
+        self.is_running = True
+        self.test_progress = {"passed": 0, "failed": 0, "pending": 0, "running": 0, "total": 0, "yet_to_run": 0}
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.playwright_dir)
+            self.npx_path = self.find_npx_path()
+
+            if not self.npx_path:
+                self.smoke_test_output = "Error: npx not found."
+                return
+
+            command = [self.npx_path, 'playwright', 'test', '--headed']
+            print(f"Executing command: {command}")
+
+            self.smoke_test_process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8',  # Explicitly set encoding to UTF-8
+                errors='replace'   # Replace undecodable characters
+            )
+            while True:
+                if self.smoke_test_process.poll() is not None:
+                    break
+                line = self.smoke_test_process.stdout.readline()
+                if line:
+                    self.smoke_test_output += line
+                    self.test_progress = self.parse_playwright_output(self.smoke_test_output)
+                    print(f"Stdout: {line.strip()} - Progress: {self.test_progress}")
+                time.sleep(0.1)
+
+            stdout, stderr = self.smoke_test_process.communicate()
+            self.smoke_test_output += stdout
+            self.test_progress = self.parse_playwright_output(self.smoke_test_output)
+            if stderr:
+                self.smoke_test_output += f"\nError:\n{stderr}"
+                print(f"Stderr: {stderr}")
+
+        except FileNotFoundError as e:
+            self.smoke_test_output = f"Error: {e}"
+        except Exception as e:
+            self.smoke_test_output = f"An unexpected error occurred: {str(e)}"
+        finally:
+            os.chdir(original_cwd)
+            self.is_running = False
+            self.smoke_test_process = None
+
+smoke_test = SmokeTest()
 
 @app.route('/')
 def index():
-    return render_template("index.html", is_running=test_running, progress=progress_data, results="\n".join(test_output))
+    return render_template('index.html', is_running=smoke_test.is_running, results=smoke_test.smoke_test_output, progress=smoke_test.test_progress)
 
 @app.route('/run_smoke', methods=['POST'])
 def run_smoke():
-    global test_running
-    if test_running:
-        return jsonify({"running": False, "message": "Test is already running"})
-    thread = threading.Thread(target=run_test)
-    thread.start()
-    return jsonify({"running": True})
+    if not smoke_test.is_running:
+        smoke_test.smoke_test_output = ""
+        smoke_test.test_progress = {"passed": 0, "failed": 0, "pending": 0, "running": 0, "total": 0, "yet_to_run": 0}
+        threading.Thread(target=smoke_test.run_smoke_test_command).start()
+        return jsonify({'running': True})
+    return jsonify({'running': smoke_test.is_running, 'message': 'Smoke test is already running.'})
 
 @app.route('/stop_smoke', methods=['POST'])
 def stop_smoke():
-    global test_process, test_running
-    with lock:
-        if test_running and test_process:
-            test_process.terminate()
-            test_running = False
-            return jsonify({"stopped": True})
-        else:
-            return jsonify({"stopped": False, "message": "No test is currently running"})
+    if smoke_test.smoke_test_process and smoke_test.is_running:
+        smoke_test.smoke_test_process.terminate()
+        smoke_test.is_running = False
+        return jsonify({'stopped': True})
+    return jsonify({'stopped': False, 'message': 'No smoke test is currently running.'})
 
 @app.route('/results')
-def get_results():
-    with lock:
-        return jsonify({
-            "results": "".join(test_output),
-            "progress": progress_data,
-            "finished": test_finished
-        })
+def results():
+    current_progress = smoke_test.parse_playwright_output(smoke_test.smoke_test_output)
+    return jsonify({'results': smoke_test.smoke_test_output, 'is_running': smoke_test.is_running, 'progress': current_progress})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
