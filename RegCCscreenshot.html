@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ReviewPro — Screenshot Reviewer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #0f1117;
+  --card: #181c27;
+  --card2: #1e2333;
+  --border: #252a38;
+  --accent: #6c63ff;
+  --accent2: #ff6584;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --success: #10b981;
+  --warn: #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); min-height: 100vh; display: flex; flex-direction: column; user-select: none; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 24px; background: var(--card);
+  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+}
+.app-title { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; }
+.app-title span { color: var(--accent); }
+
+.tb-group { display: flex; align-items: center; gap: 8px; }
+.tb-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
+
+select, .tb-input {
+  background: var(--bg); border: 1.5px solid var(--border); color: var(--text);
+  padding: 7px 32px 7px 12px; font-family: inherit; font-size: 12px; font-weight: 600;
+  border-radius: 8px; cursor: pointer; appearance: none; transition: border-color 0.2s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2364748b' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; min-width: 160px;
+}
+select:focus, .tb-input:focus { outline: none; border-color: var(--accent); }
+
+.tb-btn {
+  background: var(--card2); border: 1.5px solid var(--border); color: var(--text);
+  padding: 7px 14px; font-family: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.3px; border-radius: 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tb-btn.primary:hover { background: #5a52e0; }
+.tb-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+.progress-wrap { flex: 1; min-width: 100px; }
+.progress-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.progress-bar { height: 3px; background: var(--border); border-radius: 2px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); border-radius: 2px; transition: width 0.4s; }
+
+.day-counter { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.day-counter strong { color: var(--accent); font-size: 13px; }
+
+/* ── SETTINGS BAR ── */
+.settings-bar {
+  background: var(--card2); border-bottom: 1px solid var(--border);
+  padding: 8px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.settings-bar .sb-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 1px; }
+.count-btn {
+  background: var(--bg); border: 1.5px solid var(--border); color: var(--muted);
+  width: 26px; height: 26px; border-radius: 6px; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.count-btn:hover { border-color: var(--accent); color: var(--accent); }
+.count-display {
+  font-size: 13px; font-weight: 800; color: var(--text);
+  min-width: 20px; text-align: center;
+}
+.sb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+.screen-names-wrap { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.screen-name-inp {
+  background: var(--bg); border: 1.5px solid var(--border); color: var(--text);
+  padding: 4px 8px; font-family: inherit; font-size: 10px; font-weight: 600;
+  border-radius: 6px; width: 100px; transition: border-color 0.15s;
+}
+.screen-name-inp:focus { outline: none; border-color: var(--accent); }
+
+/* ── COMPARE STRIP ── */
+.compare-strip {
+  background: linear-gradient(90deg, rgba(108,99,255,0.12), rgba(108,99,255,0.04));
+  border-bottom: 1px solid rgba(108,99,255,0.25);
+  padding: 10px 24px; display: none; align-items: center; gap: 14px;
+}
+.compare-strip.visible { display: flex; }
+.cs-title { font-size: 10px; font-weight: 800; color: var(--accent); letter-spacing: 1px; white-space: nowrap; }
+.cs-row { display: flex; gap: 8px; overflow-x: auto; flex: 1; padding-bottom: 2px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.cs-thumb {
+  flex-shrink: 0; width: 90px; aspect-ratio: 16/10; border-radius: 8px;
+  border: 2px solid var(--border); overflow: hidden; position: relative; cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.cs-thumb:hover { transform: scale(1.05); border-color: var(--accent); }
+.cs-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.25); }
+.cs-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cs-thumb .cs-empty { width: 100%; height: 100%; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--border); }
+.cs-thumb .cs-day-label { position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 7px; font-weight: 800; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.4); padding: 1px 0; }
+.cs-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; }
+.cs-close:hover { color: var(--text); }
+
+/* ── STAGE ── */
+.stage {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 20px 60px; position: relative; overflow: hidden; min-height: 0;
+}
+
+/* Peek cards */
+.peek {
+  position: absolute; top: 50%; width: 200px;
+  background: rgba(24,28,39,0.6); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.peek.left { left: -30px; transform: translateY(-50%) rotate(-5deg); opacity: 0.4; }
+.peek.right { right: -30px; transform: translateY(-50%) rotate(5deg); opacity: 0.4; }
+.peek-label { font-size: 9px; font-weight: 800; color: var(--muted); letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+.peek-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.peek-cell { aspect-ratio: 16/10; border-radius: 4px; background: var(--border); overflow: hidden; }
+.peek-cell img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Nav arrows */
+.nav-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--card); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.nav-arrow:hover { background: var(--accent); border-color: var(--accent); color: #fff; transform: translateY(-50%) scale(1.08); }
+.nav-arrow:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+.nav-arrow.left { left: 10px; }
+.nav-arrow.right { right: 10px; }
+
+/* Day card */
+.day-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 22px;
+  width: min(820px, 100%);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  transition: opacity 0.22s, transform 0.22s;
+}
+.day-card.fade-out { opacity: 0; transform: scale(0.97); }
+
+.day-card-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+}
+.day-card-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.day-card-title span { color: var(--accent); }
+.day-badge {
+  display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 1px;
+  padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;
+  background: rgba(108,99,255,0.15); color: var(--accent); border: 1px solid rgba(108,99,255,0.3);
+}
+.day-card-actions { display: flex; gap: 8px; }
+
+.action-btn {
+  background: transparent; border: 1.5px solid var(--border);
+  color: var(--muted); padding: 5px 12px; border-radius: 20px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  cursor: pointer; font-family: inherit; transition: all 0.2s; white-space: nowrap;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Screens grid */
+.screens-grid { display: grid; gap: 10px; }
+
+.screen-cell {
+  border-radius: 10px; overflow: hidden; border: 2px solid var(--border);
+  position: relative; cursor: pointer; aspect-ratio: 16/10;
+  background: var(--card2); transition: all 0.18s;
+}
+.screen-cell:hover { border-color: var(--accent); box-shadow: 0 6px 24px rgba(108,99,255,0.2); transform: scale(1.02); z-index: 2; }
+.screen-cell.selected-cell { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.3); }
+.screen-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.cell-empty {
+  width: 100%; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+}
+.cell-empty .plus-icon { font-size: 26px; color: var(--border); transition: color 0.15s; }
+.screen-cell:hover .plus-icon,
+.screen-cell.selected-cell .plus-icon { color: var(--accent); }
+.cell-empty .cell-hint { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; text-align: center; line-height: 1.6; }
+.screen-cell.selected-cell .cell-hint { color: var(--accent); }
+
+.cell-label {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  padding: 16px 10px 6px;
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.75); letter-spacing: 0.3px;
+}
+
+.cell-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.screen-cell:hover .cell-overlay { opacity: 1; }
+.ov-btn {
+  background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; width: 32px; height: 32px; border-radius: 50%;
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.ov-btn:hover { background: var(--accent); }
+.ov-btn.del:hover { background: var(--accent2); }
+
+/* drag over */
+.screen-cell.drag-over { border-color: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); }
+
+/* missing badge */
+.missing-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(245,158,11,0.2); border: 1px solid var(--warn);
+  color: var(--warn); font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+
+/* ── DAY DOTS ── */
+.day-dots { display: flex; justify-content: center; gap: 7px; padding: 12px 0 6px; flex-wrap: wrap; }
+.day-dot {
+  height: 7px; border-radius: 4px; cursor: pointer;
+  background: var(--border); transition: all 0.25s;
+  width: 7px; position: relative;
+}
+.day-dot.filled { background: var(--muted); }
+.day-dot.active { background: var(--accent); width: 22px; }
+.day-dot:hover { background: var(--muted); }
+.day-dot-tip {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--card2); border: 1px solid var(--border); color: var(--text);
+  font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+  white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  z-index: 50;
+}
+.day-dot:hover .day-dot-tip { opacity: 1; }
+
+/* ── PASTE TOAST ── */
+.paste-bar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--card); border: 1.5px solid var(--accent);
+  color: var(--accent); padding: 9px 20px; border-radius: 30px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  white-space: nowrap; z-index: 300; max-width: 90vw; text-align: center;
+}
+.paste-bar.show { opacity: 1; }
+
+.toast {
+  position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
+  background: var(--success); color: #000; padding: 7px 18px;
+  border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+  opacity: 0; transition: opacity 0.3s; z-index: 400; pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── LIGHTBOX ── */
+.lightbox {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.95); z-index: 900;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+.lightbox.open { display: flex; }
+
+/* Close button */
+.lb-close {
+  position: fixed; top: 14px; right: 18px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted);
+  width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; 
+  z-index: 910; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.lb-close:hover { color: #fff; background: rgba(255,255,255,0.12); }
+
+/* Top pill info */
+.lb-top-info {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; z-index: 910;
+}
+.lb-pill {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+  padding: 4px 12px; border-radius: 20px;
+}
+.lb-pill-day { background: rgba(108,99,255,0.25); color: var(--accent); border: 1px solid rgba(108,99,255,0.4); }
+.lb-pill-screen { background: rgba(16,185,129,0.18); color: var(--success); border: 1px solid rgba(16,185,129,0.35); }
+.lb-pill-acc { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border); }
+
+/* Outer DAY arrows — far left/right edges */
+.lb-day-btn {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(30,35,51,0.85); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 22px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 910; transition: all 0.2s;
+}
+.lb-day-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.lb-day-btn:disabled { opacity: 0.18; cursor: default; pointer-events: none; }
+.lb-day-btn.lb-day-left  { left: 8px; }
+.lb-day-btn.lb-day-right { right: 8px; }
+
+/* Day label on outer arrows */
+.lb-day-btn .lb-arrow-label {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; font-weight: 800; color: var(--muted); white-space: nowrap; letter-spacing: 0.5px;
+}
+
+/* Center image + inner SCREEN arrows */
+.lb-body {
+  display: flex; align-items: center; gap: 16px;
+  max-width: min(1000px, 92vw); width: 100%;
+  justify-content: center;
+}
+
+.lb-screen-btn {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(108,99,255,0.15); border: 1.5px solid rgba(108,99,255,0.4);
+  color: var(--accent); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; position: relative;
+}
+.lb-screen-btn:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
+.lb-screen-btn:disabled { opacity: 0.15; cursor: default; pointer-events: none; }
+
+.lb-screen-btn .lb-arrow-label {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; font-weight: 800; color: var(--muted); white-space: nowrap; letter-spacing: 0.5px;
+}
+
+.lb-img-wrap { 
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  flex: 1; min-width: 0;
+}
+
+#lb-img {
+  max-width: 100%; max-height: 72vh;
+  object-fit: contain; border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  display: block;
+}
+.lb-empty-img {
+  width: 400px; max-width: 80vw; height: 250px;
+  background: var(--card2); border: 2px dashed var(--border);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--muted); font-weight: 600;
+}
+.lb-meta { font-size: 11px; font-weight: 600; color: var(--muted); }
+.lb-meta strong { color: var(--text); }
+.lb-keys {
+  font-size: 10px; color: var(--border); letter-spacing: 0.3px; text-align: center;
+}
+/* image name input in lightbox */
+.lb-img-name-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.lb-img-name-inp {
+  background: var(--bg); border: 1.5px solid var(--border); color: var(--text);
+  padding: 5px 10px; font-family: inherit; font-size: 11px; font-weight: 600;
+  border-radius: 8px; width: 220px; transition: border-color 0.15s; text-align: center;
+}
+.lb-img-name-inp:focus { outline: none; border-color: var(--accent); }
+.lb-img-name-inp::placeholder { color: var(--muted); }
+
+/* ── MODAL ── */
+.modal-back { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 800; align-items: center; justify-content: center; }
+.modal-back.open { display: flex; }
+.modal { background: var(--card2); border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px; max-width: min(400px, 90vw); }
+.modal h3 { font-size: 16px; font-weight: 800; color: var(--accent2); margin-bottom: 10px; }
+.modal p { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Manage accounts modal */
+.acc-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; margin-bottom: 14px; }
+.acc-row { display: flex; align-items: center; gap: 8px; }
+.acc-row-num { font-size: 10px; color: var(--muted); font-weight: 700; width: 18px; }
+.acc-name-inp {
+  flex: 1; background: var(--bg); border: 1.5px solid var(--border); color: var(--text);
+  padding: 5px 10px; font-family: inherit; font-size: 11px; font-weight: 600;
+  border-radius: 7px; transition: border-color 0.15s;
+}
+.acc-name-inp:focus { outline: none; border-color: var(--accent); }
+.acc-del-btn {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.acc-del-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.acc-add-row { display: flex; gap: 8px; margin-top: 4px; }
+.acc-add-inp {
+  flex: 1; background: var(--bg); border: 1.5px dashed var(--border); color: var(--text);
+  padding: 5px 10px; font-family: inherit; font-size: 11px; font-weight: 600;
+  border-radius: 7px; transition: border-color 0.15s;
+}
+.acc-add-inp:focus { outline: none; border-color: var(--accent); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="app-title">REVIEW<span>PRO</span></div>
+
+  <div class="tb-group">
+    <span class="tb-label">ACCOUNT</span>
+    <select id="acc-select" onchange="switchAccount(+this.value)"></select>
+    <button class="tb-btn" onclick="openModal('acc-modal')" title="Manage accounts">👥</button>
+  </div>
+
+  <div class="day-counter"><strong id="day-num">Pre-Req</strong> &nbsp;<span id="total-days-label">of 9 days</span></div>
+
+  <div class="progress-wrap">
+    <div class="progress-label" id="prog-label">0 / 0 pasted</div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="tb-group">
+    <button class="tb-btn primary" onclick="saveSession()">💾 Save</button>
+    <button class="tb-btn" onclick="document.getElementById('load-inp').click()">📂 Load</button>
+    <button class="tb-btn danger" onclick="openModal('clear-modal')">🗑</button>
+  </div>
+
+  <input type="file" id="load-inp" accept=".json" style="display:none" onchange="loadSession(event)"/>
+</div>
+
+<!-- SETTINGS BAR -->
+<div class="settings-bar">
+  <span class="sb-label">SCREENS/DAY:</span>
+  <button class="count-btn" onclick="changeScreenCount(-1)">−</button>
+  <span class="count-display" id="screen-count-disp">6</span>
+  <button class="count-btn" onclick="changeScreenCount(1)">+</button>
+
+  <div class="sb-sep"></div>
+
+  <span class="sb-label">SCREEN NAMES:</span>
+  <div class="screen-names-wrap" id="screen-names-wrap"></div>
+</div>
+
+<!-- COMPARE STRIP -->
+<div class="compare-strip" id="compare-strip">
+  <div class="cs-title" id="cs-title">COMPARE<br/>SCREEN 1</div>
+  <div class="cs-row" id="cs-row"></div>
+  <button class="cs-close" onclick="hideCompare()">✕</button>
+</div>
+
+<!-- STAGE -->
+<div class="stage" id="stage">
+  <button class="nav-arrow left" id="nav-left" onclick="goDay(-1)">‹</button>
+  <button class="nav-arrow right" id="nav-right" onclick="goDay(1)">›</button>
+
+  <div class="peek left" id="peek-left">
+    <div class="peek-label" id="peek-left-label">PRE-REQ</div>
+    <div class="peek-grid" id="peek-left-grid"></div>
+  </div>
+
+  <div class="day-card" id="day-card">
+    <div class="day-card-header">
+      <div class="day-card-title"><span id="card-day-num">Pre-Requisite</span></div>
+      <div class="day-card-actions">
+        <button class="action-btn" style="border-color:var(--accent);color:var(--accent);" onclick="selectNextEmpty()">▶ Next Empty</button>
+        <button class="action-btn" onclick="showCompare()">⚡ Compare</button>
+      </div>
+    </div>
+    <div class="screens-grid" id="screens-grid"></div>
+  </div>
+
+  <div class="peek right" id="peek-right">
+    <div class="peek-label" id="peek-right-label">DAY 0</div>
+    <div class="peek-grid" id="peek-right-grid"></div>
+  </div>
+</div>
+
+<!-- DAY DOTS -->
+<div class="day-dots" id="day-dots"></div>
+
+<!-- PASTE BAR -->
+<div class="paste-bar" id="paste-bar">📋 Cell selected — press Ctrl+V to paste screenshot</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLB()">✕</button>
+
+  <!-- Top pills: account · day · screen name -->
+  <div class="lb-top-info">
+    <span class="lb-pill lb-pill-acc" id="lb-pill-acc">Account 1</span>
+    <span style="color:var(--border);font-size:12px;">·</span>
+    <span class="lb-pill lb-pill-day" id="lb-pill-day">Pre-Req</span>
+    <span style="color:var(--border);font-size:12px;">·</span>
+    <span class="lb-pill lb-pill-screen" id="lb-pill-screen">Screen 1</span>
+  </div>
+
+  <!-- Outer DAY navigation arrows -->
+  <button class="lb-day-btn lb-day-left" id="lb-day-left" onclick="lbNav('day',-1)">
+    ‹
+    <span class="lb-arrow-label">PREV DAY</span>
+  </button>
+  <button class="lb-day-btn lb-day-right" id="lb-day-right" onclick="lbNav('day',1)">
+    ›
+    <span class="lb-arrow-label">NEXT DAY</span>
+  </button>
+
+  <!-- Body: inner screen arrows + image -->
+  <div class="lb-body">
+    <button class="lb-screen-btn" id="lb-screen-left" onclick="lbNav('screen',-1)">
+      ‹
+      <span class="lb-arrow-label">PREV</span>
+    </button>
+
+    <div class="lb-img-wrap">
+      <img id="lb-img" src="" alt="" style="display:none"/>
+      <div class="lb-empty-img" id="lb-empty" style="display:none">No screenshot yet — paste one</div>
+
+      <!-- Editable image name -->
+      <div class="lb-img-name-wrap">
+        <input class="lb-img-name-inp" id="lb-img-name" placeholder="Enter image title / note…" onchange="saveLBImgName()"/>
+      </div>
+
+      <div class="lb-meta" id="lb-meta"></div>
+      <div class="lb-keys">‹ › outer = Day navigation &nbsp;|&nbsp; ‹ › inner = Screen navigation &nbsp;|&nbsp; ESC = Close</div>
+    </div>
+
+    <button class="lb-screen-btn" id="lb-screen-right" onclick="lbNav('screen',1)">
+      ›
+      <span class="lb-arrow-label">NEXT</span>
+    </button>
+  </div>
+</div>
+
+<!-- CLEAR MODAL -->
+<div class="modal-back" id="clear-modal">
+  <div class="modal">
+    <h3>Clear All Data?</h3>
+    <p>All pasted screenshots and image names will be removed. Save your session first if you want to keep them!</p>
+    <div class="modal-btns">
+      <button class="tb-btn" onclick="closeModal('clear-modal')">Cancel</button>
+      <button class="tb-btn danger" onclick="doClear()">Yes, Clear All</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE ACCOUNTS MODAL -->
+<div class="modal-back" id="acc-modal">
+  <div class="modal" style="max-width:min(480px,94vw);width:480px;">
+    <h3 style="color:var(--accent);margin-bottom:14px;">👥 Manage Accounts</h3>
+    <div class="acc-list" id="acc-list"></div>
+    <div class="acc-add-row">
+      <input class="acc-add-inp" id="acc-add-inp" placeholder="New account name…" onkeydown="if(event.key==='Enter')addAccount()"/>
+      <button class="tb-btn primary" onclick="addAccount()">＋ Add</button>
+    </div>
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="tb-btn primary" onclick="saveAccounts()">✓ Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  DAY DEFINITIONS  (Change 1)
+// ════════════════════════════════════════════
+// Index:  0            1        2      3      4      5      6      7      8
+const DAY_LABELS   = ['Pre-Req','Day 0','Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7'];
+const DAY_TITLES   = ['Pre-Requisite','Day 0','Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7'];
+const NUM_DAYS     = DAY_LABELS.length;   // 9
+const MIN_SCREENS  = 1;
+const MAX_SCREENS  = 50;   // Change 2: unlimited (capped at 50 for sanity)
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let S = {
+  numScreens: 6,
+  currentAccount: 0,
+  currentDay: 0,
+  screenNames: Array.from({length: MAX_SCREENS}, (_,i) => `Screen ${i+1}`),
+  // imageNames[acc][day][screen] = string title
+  imageNames: [],
+  // accountNames dynamic (Change 4)
+  accountNames: Array.from({length: 10}, (_,i) => `Account ${i+1}`),
+  images: null
+};
+S.images = makeEmptyImages();
+S.imageNames = makeEmptyNames();
+
+let selectedCell  = null;
+let lbState       = null;
+let compareScreen = null;
+
+function makeEmptyImages() {
+  return Array.from({length: S.accountNames.length}, () =>
+    Array.from({length: NUM_DAYS}, () => Array(MAX_SCREENS).fill(null))
+  );
+}
+
+function makeEmptyNames() {
+  return Array.from({length: S.accountNames.length}, () =>
+    Array.from({length: NUM_DAYS}, () => Array(MAX_SCREENS).fill(''))
+  );
+}
+
+// Ensure images/names arrays are big enough after accounts added
+function ensureArraySize() {
+  const n = S.accountNames.length;
+  while (S.images.length < n) {
+    S.images.push(Array.from({length: NUM_DAYS}, () => Array(MAX_SCREENS).fill(null)));
+  }
+  while (S.imageNames.length < n) {
+    S.imageNames.push(Array.from({length: NUM_DAYS}, () => Array(MAX_SCREENS).fill('')));
+  }
+}
+
+// ════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════
+function boot() {
+  buildAccountSelect();
+  buildScreenNameInputs();
+  buildDots();
+  buildGrid();
+  buildPeeks();
+  updateProgress();
+  updateNavArrows();
+  document.addEventListener('paste', onPaste);
+  document.addEventListener('keydown', onKey);
+}
+
+// ════════════════════════════════════════════
+//  ACCOUNT SELECT  (Change 4 + 5)
+// ════════════════════════════════════════════
+function buildAccountSelect() {
+  const sel = document.getElementById('acc-select');
+  sel.innerHTML = '';
+  S.accountNames.forEach((name, i) => {
+    const op = document.createElement('option');
+    op.value = i;
+    op.textContent = `${i+1}. ${name}`;
+    if (i === S.currentAccount) op.selected = true;
+    sel.appendChild(op);
+  });
+}
+
+function switchAccount(idx) {
+  S.currentAccount = idx;
+  selectedCell = null;
+  hidePasteBar();
+  buildGrid();
+  buildPeeks();
+  updateProgress();
+  if (compareScreen !== null) showCompare(compareScreen);
+}
+
+// ── Manage Accounts Modal ──
+function openAccModal() {
+  buildAccList();
+  openModal('acc-modal');
+}
+
+function buildAccList() {
+  const list = document.getElementById('acc-list');
+  list.innerHTML = '';
+  S.accountNames.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'acc-row';
+
+    const num = document.createElement('span');
+    num.className = 'acc-row-num';
+    num.textContent = `${i+1}.`;
+
+    const inp = document.createElement('input');
+    inp.className = 'acc-name-inp';
+    inp.value = name;
+    inp.dataset.i = i;
+    inp.placeholder = `Account ${i+1}`;
+
+    const del = document.createElement('button');
+    del.className = 'acc-del-btn';
+    del.title = 'Remove account';
+    del.innerHTML = '✕';
+    del.onclick = () => {
+      if (S.accountNames.length <= 1) { showToast('Need at least 1 account'); return; }
+      S.accountNames.splice(i, 1);
+      S.images.splice(i, 1);
+      S.imageNames.splice(i, 1);
+      if (S.currentAccount >= S.accountNames.length) S.currentAccount = S.accountNames.length - 1;
+      buildAccList();
+    };
+
+    row.appendChild(num); row.appendChild(inp); row.appendChild(del);
+    list.appendChild(row);
+  });
+  document.getElementById('acc-add-inp').value = '';
+}
+
+function addAccount() {
+  const inp = document.getElementById('acc-add-inp');
+  const name = inp.value.trim() || `Account ${S.accountNames.length + 1}`;
+  S.accountNames.push(name);
+  ensureArraySize();
+  inp.value = '';
+  buildAccList();
+  showToast(`Added: ${name}`);
+}
+
+function saveAccounts() {
+  // Read all edited names from inputs
+  document.querySelectorAll('#acc-list .acc-name-inp').forEach(inp => {
+    const i = +inp.dataset.i;
+    if (i < S.accountNames.length) {
+      S.accountNames[i] = inp.value.trim() || `Account ${i+1}`;
+    }
+  });
+  buildAccountSelect();
+  buildGrid();
+  updateProgress();
+  closeModal('acc-modal');
+  showToast('Accounts updated ✓');
+}
+
+// ════════════════════════════════════════════
+//  SCREEN COUNT & NAMES
+// ════════════════════════════════════════════
+function changeScreenCount(delta) {
+  const next = S.numScreens + delta;
+  if (next < MIN_SCREENS || next > MAX_SCREENS) return;
+  S.numScreens = next;
+  document.getElementById('screen-count-disp').textContent = next;
+  buildScreenNameInputs();
+  buildGrid();
+  buildPeeks();
+  if (compareScreen !== null && compareScreen >= next) hideCompare();
+  else if (compareScreen !== null) showCompare(compareScreen);
+  updateProgress();
+}
+
+function buildScreenNameInputs() {
+  const wrap = document.getElementById('screen-names-wrap');
+  wrap.innerHTML = '';
+  for (let s = 0; s < S.numScreens; s++) {
+    const inp = document.createElement('input');
+    inp.className = 'screen-name-inp';
+    inp.value = S.screenNames[s];
+    inp.title = `Rename Screen ${s+1}`;
+    inp.dataset.s = s;
+    inp.onchange = () => {
+      S.screenNames[s] = inp.value.trim() || `Screen ${s+1}`;
+      document.querySelectorAll(`.cell-label[data-s="${s}"]`).forEach(el => el.textContent = S.screenNames[s]);
+      if (compareScreen === s) document.getElementById('cs-title').textContent = `COMPARE\n${S.screenNames[s]}`;
+      if (lbState && lbState.screen === s) renderLB();
+    };
+    wrap.appendChild(inp);
+  }
+}
+
+// ════════════════════════════════════════════
+//  GRID
+// ════════════════════════════════════════════
+function buildGrid() {
+  const grid = document.getElementById('screens-grid');
+  grid.innerHTML = '';
+  const cols = S.numScreens <= 4 ? 2 : S.numScreens <= 9 ? 3 : 4;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  for (let s = 0; s < S.numScreens; s++) {
+    grid.appendChild(makeCell(S.currentAccount, S.currentDay, s));
+  }
+  document.getElementById('card-day-num').textContent = DAY_TITLES[S.currentDay];
+  document.getElementById('day-num').textContent = DAY_LABELS[S.currentDay];
+}
+
+function makeCell(acc, day, screen) {
+  const cell = document.createElement('div');
+  cell.className = 'screen-cell';
+  cell.dataset.acc = acc;
+  cell.dataset.day = day;
+  cell.dataset.screen = screen;
+
+  const img = S.images[acc][day][screen];
+  const isSelected = selectedCell && selectedCell.day === day && selectedCell.screen === screen;
+  if (isSelected) cell.classList.add('selected-cell');
+
+  if (img) {
+    const i = document.createElement('img');
+    i.src = img;
+    cell.appendChild(i);
+
+    const ov = document.createElement('div');
+    ov.className = 'cell-overlay';
+
+    const zBtn = document.createElement('button');
+    zBtn.className = 'ov-btn'; zBtn.title = 'Zoom'; zBtn.innerHTML = '🔍';
+    zBtn.onclick = e => { e.stopPropagation(); openLB(day, screen); };
+
+    const dBtn = document.createElement('button');
+    dBtn.className = 'ov-btn del'; dBtn.title = 'Remove'; dBtn.innerHTML = '✕';
+    dBtn.onclick = e => { e.stopPropagation(); removeImg(acc, day, screen); };
+
+    ov.appendChild(zBtn); ov.appendChild(dBtn);
+    cell.appendChild(ov);
+
+    // show image name if set
+    const imgName = S.imageNames[acc]?.[day]?.[screen];
+    const lbl = document.createElement('div');
+    lbl.className = 'cell-label'; lbl.dataset.s = screen;
+    lbl.textContent = imgName && imgName.trim() ? imgName : S.screenNames[screen];
+    cell.appendChild(lbl);
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'cell-empty';
+    empty.innerHTML = `<div class="plus-icon">＋</div><div class="cell-hint">${isSelected ? 'PRESS CTRL+V' : 'CLICK TO SELECT'}</div>`;
+    cell.appendChild(empty);
+
+    const anyFilled = S.images[acc][day].slice(0, S.numScreens).some(x => x !== null);
+    if (anyFilled) {
+      const badge = document.createElement('div');
+      badge.className = 'missing-badge'; badge.textContent = 'MISSING';
+      cell.appendChild(badge);
+    }
+
+    const lbl = document.createElement('div');
+    lbl.className = 'cell-label'; lbl.dataset.s = screen;
+    lbl.textContent = S.screenNames[screen];
+    cell.appendChild(lbl);
+  }
+
+  cell.onclick = () => selectCell(acc, day, screen, cell);
+  cell.ondragover = e => { e.preventDefault(); cell.classList.add('drag-over'); };
+  cell.ondragleave = () => cell.classList.remove('drag-over');
+  cell.ondrop = e => { e.preventDefault(); cell.classList.remove('drag-over'); handleDropFile(e, acc, day, screen); };
+
+  return cell;
+}
+
+function selectCell(acc, day, screen, cellEl) {
+  if (S.images[acc][day][screen]) { openLB(day, screen); return; }
+  document.querySelectorAll('.screen-cell.selected-cell').forEach(c => c.classList.remove('selected-cell'));
+  cellEl.classList.add('selected-cell');
+  cellEl.querySelector('.cell-hint') && (cellEl.querySelector('.cell-hint').textContent = 'PRESS CTRL+V');
+  selectedCell = { day, screen };
+  showPasteBar(acc, day, screen);
+}
+
+function selectNextEmpty() {
+  const acc = S.currentAccount;
+  for (let d = S.currentDay; d < NUM_DAYS; d++) {
+    for (let s = 0; s < S.numScreens; s++) {
+      if (!S.images[acc][d][s]) {
+        if (d !== S.currentDay) { S.currentDay = d; buildGrid(); buildPeeks(); buildDots(); updateNavArrows(); }
+        const cellEl = document.querySelector(`.screen-cell[data-acc="${acc}"][data-day="${d}"][data-screen="${s}"]`);
+        if (cellEl) { selectCell(acc, d, s, cellEl); cellEl.scrollIntoView({block:'nearest'}); }
+        return;
+      }
+    }
+  }
+  showToast('All cells filled for this account! 🎉');
+}
+
+// ════════════════════════════════════════════
+//  PASTE & DROP
+// ════════════════════════════════════════════
+function onPaste(e) {
+  if (!selectedCell) return;
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      readImage(item.getAsFile(), S.currentAccount, selectedCell.day, selectedCell.screen);
+      break;
+    }
+  }
+}
+
+function handleDropFile(e, acc, day, screen) {
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) readImage(file, acc, day, screen);
+}
+
+function readImage(file, acc, day, screen) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    S.images[acc][day][screen] = ev.target.result;
+    const old = document.querySelector(`.screen-cell[data-acc="${acc}"][data-day="${day}"][data-screen="${screen}"]`);
+    if (old) old.replaceWith(makeCell(acc, day, screen));
+    buildPeeks();
+    updateProgress();
+    hidePasteBar();
+    showToast('✓ Screenshot added!');
+    selectedCell = null;
+    setTimeout(() => autoAdvance(acc, day, screen), 200);
+  };
+  reader.readAsDataURL(file);
+}
+
+function autoAdvance(acc, day, screen) {
+  let ns = screen + 1, nd = day;
+  if (ns >= S.numScreens) { ns = 0; nd = day + 1; }
+  if (nd >= NUM_DAYS) return;
+  if (S.images[acc][nd][ns]) return;
+  if (nd !== S.currentDay) { S.currentDay = nd; buildGrid(); buildPeeks(); buildDots(); updateNavArrows(); }
+  const nextCell = document.querySelector(`.screen-cell[data-acc="${acc}"][data-day="${nd}"][data-screen="${ns}"]`);
+  if (nextCell) { selectCell(acc, nd, ns, nextCell); nextCell.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+}
+
+function removeImg(acc, day, screen) {
+  S.images[acc][day][screen] = null;
+  const old = document.querySelector(`.screen-cell[data-acc="${acc}"][data-day="${day}"][data-screen="${screen}"]`);
+  if (old) old.replaceWith(makeCell(acc, day, screen));
+  buildPeeks();
+  updateProgress();
+}
+
+// ════════════════════════════════════════════
+//  DAY NAVIGATION
+// ════════════════════════════════════════════
+function goDay(dir) {
+  const next = S.currentDay + dir;
+  if (next < 0 || next >= NUM_DAYS) return;
+  const card = document.getElementById('day-card');
+  card.classList.add('fade-out');
+  setTimeout(() => {
+    S.currentDay = next;
+    selectedCell = null;
+    hidePasteBar();
+    card.classList.remove('fade-out');
+    buildGrid(); buildPeeks(); buildDots(); updateNavArrows();
+    if (compareScreen !== null) showCompare(compareScreen);
+  }, 180);
+}
+
+function buildDots() {
+  const wrap = document.getElementById('day-dots');
+  wrap.innerHTML = '';
+  for (let d = 0; d < NUM_DAYS; d++) {
+    const dot = document.createElement('div');
+    dot.className = 'day-dot';
+    if (d === S.currentDay) dot.classList.add('active');
+    const hasSome = S.images[S.currentAccount][d].slice(0, S.numScreens).some(x => x);
+    if (hasSome) dot.classList.add('filled');
+
+    const tip = document.createElement('span');
+    tip.className = 'day-dot-tip';
+    tip.textContent = DAY_TITLES[d];
+    dot.appendChild(tip);
+
+    dot.onclick = () => { if (d !== S.currentDay) { S.currentDay = d; buildGrid(); buildPeeks(); buildDots(); updateNavArrows(); } };
+    wrap.appendChild(dot);
+  }
+}
+
+function updateNavArrows() {
+  document.getElementById('nav-left').disabled  = S.currentDay === 0;
+  document.getElementById('nav-right').disabled = S.currentDay === NUM_DAYS - 1;
+}
+
+// ════════════════════════════════════════════
+//  PEEK CARDS
+// ════════════════════════════════════════════
+function buildPeeks() {
+  buildPeek('left',  S.currentDay - 1);
+  buildPeek('right', S.currentDay + 1);
+}
+
+function buildPeek(side, day) {
+  const label = document.getElementById(`peek-${side}-label`);
+  const grid  = document.getElementById(`peek-${side}-grid`);
+  const el    = document.getElementById(`peek-${side}`);
+  if (day < 0 || day >= NUM_DAYS) { el.style.opacity = '0'; return; }
+  el.style.opacity = '';
+  label.textContent = DAY_LABELS[day];
+  grid.innerHTML = '';
+  const count = Math.min(S.numScreens, 6);
+  for (let s = 0; s < count; s++) {
+    const cell = document.createElement('div');
+    cell.className = 'peek-cell';
+    const img = S.images[S.currentAccount][day][s];
+    if (img) { const i = document.createElement('img'); i.src = img; cell.appendChild(i); }
+    grid.appendChild(cell);
+  }
+}
+
+// ════════════════════════════════════════════
+//  COMPARE MODE
+// ════════════════════════════════════════════
+function showCompare(screen) {
+  if (screen === undefined) screen = 0;
+  compareScreen = screen;
+  document.getElementById('compare-strip').classList.add('visible');
+  document.getElementById('cs-title').textContent = `COMPARE\n${S.screenNames[screen]}`;
+  const row = document.getElementById('cs-row');
+  row.innerHTML = '';
+  for (let d = 0; d < NUM_DAYS; d++) {
+    const thumb = document.createElement('div');
+    thumb.className = 'cs-thumb' + (d === S.currentDay ? ' active' : '');
+    const img = S.images[S.currentAccount][d][screen];
+    if (img) { const i = document.createElement('img'); i.src = img; thumb.appendChild(i); }
+    else { const emp = document.createElement('div'); emp.className = 'cs-empty'; emp.textContent = '+'; thumb.appendChild(emp); }
+    const lbl = document.createElement('div'); lbl.className = 'cs-day-label'; lbl.textContent = DAY_LABELS[d]; thumb.appendChild(lbl);
+    thumb.onclick = () => { S.currentDay = d; buildGrid(); buildPeeks(); buildDots(); updateNavArrows(); showCompare(screen); };
+    row.appendChild(thumb);
+  }
+}
+
+function hideCompare() {
+  compareScreen = null;
+  document.getElementById('compare-strip').classList.remove('visible');
+}
+
+// ════════════════════════════════════════════
+//  LIGHTBOX  (Change 3: inner screen arrows + Change 5: image name)
+// ════════════════════════════════════════════
+function openLB(day, screen) {
+  lbState = { day, screen };
+  renderLB();
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function renderLB() {
+  const { day, screen } = lbState;
+  const acc = S.currentAccount;
+  const img = S.images[acc][day][screen];
+
+  const imgEl   = document.getElementById('lb-img');
+  const emptyEl = document.getElementById('lb-empty');
+  if (img) {
+    imgEl.src = img; imgEl.style.display = '';
+    emptyEl.style.display = 'none';
+  } else {
+    imgEl.src = ''; imgEl.style.display = 'none';
+    emptyEl.style.display = '';
+  }
+
+  // Pills
+  document.getElementById('lb-pill-acc').textContent    = S.accountNames[acc];
+  document.getElementById('lb-pill-day').textContent    = DAY_LABELS[day];
+  document.getElementById('lb-pill-screen').textContent = S.screenNames[screen];
+
+  // Meta
+  document.getElementById('lb-meta').innerHTML =
+    `<strong>${S.accountNames[acc]}</strong> &nbsp;·&nbsp; ${DAY_TITLES[day]} &nbsp;·&nbsp; ${S.screenNames[screen]}`;
+
+  // Image name (Change 5)
+  const nameVal = S.imageNames[acc]?.[day]?.[screen] || '';
+  document.getElementById('lb-img-name').value = nameVal;
+
+  // Button states — outer DAY
+  document.getElementById('lb-day-left').disabled   = day === 0;
+  document.getElementById('lb-day-right').disabled  = day === NUM_DAYS - 1;
+  // Button states — inner SCREEN
+  document.getElementById('lb-screen-left').disabled  = screen === 0;
+  document.getElementById('lb-screen-right').disabled = screen === S.numScreens - 1;
+}
+
+function closeLB() {
+  document.getElementById('lightbox').classList.remove('open');
+  lbState = null;
+}
+
+function lbNav(type, dir) {
+  if (!lbState) return;
+  let { day, screen } = lbState;
+  if (type === 'day')    day    = Math.max(0, Math.min(NUM_DAYS - 1, day + dir));
+  else                   screen = Math.max(0, Math.min(S.numScreens - 1, screen + dir));
+  lbState = { day, screen };
+  renderLB();
+}
+
+// Save image name typed in lightbox (Change 5)
+function saveLBImgName() {
+  if (!lbState) return;
+  const { day, screen } = lbState;
+  const acc = S.currentAccount;
+  const name = document.getElementById('lb-img-name').value.trim();
+  if (!S.imageNames[acc]) S.imageNames[acc] = Array.from({length: NUM_DAYS}, () => Array(MAX_SCREENS).fill(''));
+  S.imageNames[acc][day][screen] = name;
+  // Refresh cell label in grid
+  const lbl = document.querySelector(`.screen-cell[data-acc="${acc}"][data-day="${day}"][data-screen="${screen}"] .cell-label`);
+  if (lbl) lbl.textContent = name || S.screenNames[screen];
+  showToast('Image name saved ✓');
+}
+
+// ════════════════════════════════════════════
+//  KEYBOARD
+// ════════════════════════════════════════════
+function onKey(e) {
+  const lbOpen  = document.getElementById('lightbox').classList.contains('open');
+  const isInput = ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName);
+  if (lbOpen) {
+    if (isInput) return; // allow typing in lb-img-name
+    if (e.key === 'ArrowLeft')  lbNav('day', -1);
+    if (e.key === 'ArrowRight') lbNav('day',  1);
+    if (e.key === 'ArrowUp')   { e.preventDefault(); lbNav('screen', -1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); lbNav('screen',  1); }
+    if (e.key === 'Escape') closeLB();
+    return;
+  }
+  if (!isInput) {
+    if (e.key === 'ArrowLeft')  goDay(-1);
+    if (e.key === 'ArrowRight') goDay(1);
+  }
+}
+
+// ════════════════════════════════════════════
+//  PROGRESS
+// ════════════════════════════════════════════
+function updateProgress() {
+  let filled = 0;
+  const numAcc = S.accountNames.length;
+  const total  = numAcc * NUM_DAYS * S.numScreens;
+  for (let a = 0; a < numAcc; a++)
+    for (let d = 0; d < NUM_DAYS; d++)
+      for (let s = 0; s < S.numScreens; s++)
+        if (S.images[a]?.[d]?.[s]) filled++;
+  document.getElementById('prog-label').textContent = `${filled} / ${total} pasted`;
+  document.getElementById('prog-fill').style.width  = total ? (filled / total * 100) + '%' : '0%';
+  document.getElementById('total-days-label').textContent = `of ${NUM_DAYS} days`;
+}
+
+// ════════════════════════════════════════════
+//  PASTE BAR
+// ════════════════════════════════════════════
+function showPasteBar(acc, day, screen) {
+  const bar = document.getElementById('paste-bar');
+  bar.textContent = `📋 ${S.accountNames[acc]} · ${DAY_LABELS[day]} · ${S.screenNames[screen]} — Press Ctrl+V to paste`;
+  bar.classList.add('show');
+}
+function hidePasteBar() { document.getElementById('paste-bar').classList.remove('show'); }
+
+// ════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ════════════════════════════════════════════
+//  SAVE / LOAD
+// ════════════════════════════════════════════
+function saveSession() {
+  const payload = {
+    v: 3,
+    numScreens:   S.numScreens,
+    screenNames:  S.screenNames,
+    accountNames: S.accountNames,
+    images:       S.images,
+    imageNames:   S.imageNames
+  };
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `reviewpro_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Session saved!');
+}
+
+function loadSession(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.v === 2 || d.v === 3) {
+        S.numScreens   = d.numScreens;
+        S.screenNames  = d.screenNames;
+        S.accountNames = d.accountNames;
+        S.images       = d.images;
+        S.imageNames   = d.imageNames || makeEmptyNames();
+        S.currentAccount = 0;
+        S.currentDay     = 0;
+        selectedCell = null; compareScreen = null;
+        document.getElementById('screen-count-disp').textContent = S.numScreens;
+        buildAccountSelect();
+        buildScreenNameInputs();
+        buildGrid(); buildPeeks(); buildDots();
+        updateProgress(); updateNavArrows();
+        hideCompare(); hidePasteBar();
+        showToast('✓ Session loaded!');
+      } else { alert('Unrecognised session file.'); }
+    } catch { alert('Could not load file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ════════════════════════════════════════════
+//  CLEAR
+// ════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); if(id==='acc-modal') buildAccList(); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function doClear() {
+  S.images     = makeEmptyImages();
+  S.imageNames = makeEmptyNames();
+  selectedCell = null; compareScreen = null;
+  buildGrid(); buildPeeks(); buildDots(); updateProgress(); hideCompare(); hidePasteBar();
+  closeModal('clear-modal');
+  showToast('All cleared');
+}
+
+// ── GO ──
+boot();
+</script>
+</body>
+</html>
