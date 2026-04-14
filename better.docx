@@ -1,0 +1,30 @@
+MEMORANDUM
+​TO: Management
+FROM: QA Engineering Team
+DATE: April 2026
+SUBJECT: Approval for Internal Hosting of Automated QA Tool Suite
+​1. Purpose
+​This write-up seeks management approval for a secure internal hosting location to deploy three fully-built, tested HTML tools. These tools are designed to replace error-prone manual testing methods for Funds Availability (Reg CC), RDC, and ACH processing.  
+​2. Current Challenges & Business Risk
+​Our current reliance on manual spreadsheets and client-specific Excel macros presents significant operational risks:
+​High Complexity (Reg CC): The sheer volume of rule permutations—including account age, daily caps, and shared-pool depletion—makes manual verification mathematically unreliable.  
+​Operational Bottlenecks: Testing frequently halts whenever a Subject Matter Expert (SME) is unavailable to manage fragile macros or interpret complex hash totals.  
+​Infrastructure Fragility: Existing macros are prone to corruption on shared drives and require constant maintenance across different client engagements.  
+​Inefficient Defect Diagnosis: Identifying errors in 132-character (RDC) or 94-character (ACH) fixed-width formats currently requires manual character counting.  
+​3. Proposed Solution
+​The QA team has developed three standalone HTML files that operate without the need for backend infrastructure or databases:  
+​Funds Availability Calculator: Automates all Reg CC rules to produce a visual, traceable release grid.  
+​RDC Builder & Parser: Consolidates all client-specific macros into one tool that builds and inspects multi-batch files.  
+​ACH Builder & Parser: Automates NACHA-compliant file creation and provides field-level diagnostic labels.  
+​4. Strategic Benefits
+​Risk Mitigation: Eliminates the "wrong expected values" often produced by manual spreadsheet modeling.  
+​Resource Independence: Empowers any QA engineer to work independently, removing the SME as a single point of failure.  
+​Audit Readiness: Provides self-explanatory, rule-tagged outputs that are ready for review by business analysts and auditors.  
+​Zero Ongoing Costs: Because these are static HTML files, there are no ongoing maintenance or infrastructure costs.  
+​5. Implementation Request
+​The tools are ready for immediate deployment. We request that management coordinate with IT to approve an internal-only hosting solution.  
+​Acceptable hosting options include:  
+​Company Intranet or internal web portal.
+​Secure SharePoint Online (internal access only).
+​IT-managed internal server (nginx/Apache) for static file serving.
+​Note: Because these tools contain internal business logic, public hosting is strictly prohibited.  
